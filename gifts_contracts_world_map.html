@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Foreign Gifts & Contracts by Country — Coughlan & Goldstein</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f0f4f8;
+    color: #1a1a2e;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, #002d72 0%, #003a8c 100%);
+    color: white;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .header-left h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
+  .header-left p  { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+  .header-right   { font-size: 11px; text-align: right; line-height: 1.65; }
+  .header-right .authors {
+    font-size: 12px;
+    font-weight: 600;
+    color: #c8a951;
+    margin-bottom: 1px;
+  }
+  .header-right .institution { opacity: 0.65; }
+
+  /* ── CONTROLS ── */
+  .controls {
+    background: white;
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 2px solid #e2e8f0;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .controls label {
+    font-size: 12px; font-weight: 600; color: #444;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px;
+  }
+  .toggle-group {
+    display: flex; background: #f0f4f8; border-radius: 8px; padding: 3px; gap: 2px;
+  }
+  .toggle-btn {
+    padding: 7px 16px; border: none; background: transparent; border-radius: 6px;
+    cursor: pointer; font-size: 13px; font-weight: 500; color: #555;
+    transition: all 0.2s ease; white-space: nowrap;
+  }
+  .toggle-btn.active {
+    background: #002d72; color: white; box-shadow: 0 1px 4px rgba(0,45,114,0.4);
+  }
+  .toggle-btn:hover:not(.active) { background: #e0e7f0; color: #002d72; }
+  .zoom-controls { display: flex; gap: 6px; margin-left: auto; }
+  .zoom-btn {
+    width: 30px; height: 30px; border: 1.5px solid #002d72; background: white;
+    color: #002d72; font-size: 18px; font-weight: 600; border-radius: 6px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .zoom-btn:hover { background: #002d72; color: white; }
+  .reset-btn {
+    padding: 7px 14px; border: 1.5px solid #002d72; background: white;
+    color: #002d72; font-size: 12px; font-weight: 600; border-radius: 6px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .reset-btn:hover { background: #002d72; color: white; }
+
+  /* ── SEARCH ── */
+  .search-wrap { position: relative; }
+  #country-search {
+    padding: 7px 34px 7px 12px;
+    border: 1.5px solid #cbd5e0; border-radius: 8px;
+    font-size: 13px; width: 210px; outline: none; color: #1a1a2e;
+    background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat right 10px center;
+    transition: border-color 0.2s;
+  }
+  #country-search:focus { border-color: #002d72; background-color: white; }
+  #country-search::placeholder { color: #aaa; }
+  #search-dropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; width: 220px;
+    background: white; border: 1.5px solid #cbd5e0; border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12); z-index: 200;
+    display: none; max-height: 240px; overflow-y: auto;
+  }
+  #search-dropdown.open { display: block; }
+  .search-item {
+    padding: 9px 14px; font-size: 13px; cursor: pointer; color: #1a1a2e;
+    transition: background 0.12s; border-bottom: 1px solid #f0f4f8;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .search-item:last-child { border-bottom: none; }
+  .search-item:hover, .search-item.active-item { background: #eef2fb; color: #002d72; font-weight: 600; }
+  .search-item em { font-style: normal; color: #002d72; font-weight: 700; }
+  .search-item .tag-territory {
+    font-size: 9px; background: #f0e8d0; color: #7a5c10; border-radius: 3px;
+    padding: 1px 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+    flex-shrink: 0;
+  }
+  .search-no-results { padding: 9px 14px; font-size: 12px; color: #999; font-style: italic; }
+
+  /* ── MAP ── */
+  #map-container { flex: 1; position: relative; overflow: hidden; }
+  svg { width: 100%; height: 100%; cursor: grab; }
+  svg:active { cursor: grabbing; }
+  .country { stroke: #ffffff; stroke-width: 0.4px; }
+  .country:hover { stroke: #c8a951; stroke-width: 1.5px; cursor: pointer; }
+  .country-highlighted { stroke: #c8a951 !important; stroke-width: 2px !important; filter: brightness(1.2); }
+  .country-label {
+    fill: rgba(255,255,255,0.92); text-anchor: middle; pointer-events: none;
+    font-weight: 600; paint-order: stroke; stroke: rgba(0,0,0,0.45);
+    stroke-width: 2px; stroke-linejoin: round;
+  }
+
+  /* ── TOOLTIP ── */
+  #tooltip {
+    position: absolute; background: rgba(0,25,65,0.95); color: white;
+    padding: 14px 18px; border-radius: 10px; font-size: 13px;
+    pointer-events: none; opacity: 0; transition: opacity 0.15s;
+    max-width: 280px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    border: 1px solid rgba(200,169,81,0.4); z-index: 100;
+  }
+  #tooltip h3 {
+    font-size: 15px; font-weight: 700; margin-bottom: 10px; color: #c8a951;
+    border-bottom: 1px solid rgba(200,169,81,0.3); padding-bottom: 8px;
+  }
+  .tooltip-row { display: flex; justify-content: space-between; align-items: center; margin: 5px 0; gap: 16px; }
+  .tooltip-label { font-size: 11px; color: rgba(255,255,255,0.65); text-transform: uppercase; letter-spacing: 0.3px; }
+  .tooltip-value { font-size: 13px; font-weight: 600; color: white; text-align: right; }
+  .tooltip-value.highlight { color: #c8a951; }
+
+  /* ── TERRITORY CARD ── */
+  #territory-card {
+    position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,25,65,0.96); color: white;
+    padding: 16px 20px; border-radius: 12px; font-size: 13px;
+    max-width: 320px; min-width: 260px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.45);
+    border: 1px solid rgba(200,169,81,0.5); z-index: 110; display: none;
+  }
+  #territory-card.visible { display: block; }
+  #territory-card h3 {
+    font-size: 15px; font-weight: 700; color: #c8a951;
+    border-bottom: 1px solid rgba(200,169,81,0.3);
+    padding-bottom: 8px; margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .tc-close {
+    background: none; border: none; color: rgba(255,255,255,0.5); font-size: 18px;
+    cursor: pointer; padding: 0; line-height: 1; transition: color 0.15s;
+  }
+  .tc-close:hover { color: white; }
+  .tc-note { font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 10px; font-style: italic; }
+
+  /* ── LEGEND ── */
+  #legend {
+    position: absolute; bottom: 44px; left: 24px;
+    background: rgba(255,255,255,0.96); border-radius: 10px;
+    padding: 14px 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    border: 1px solid #e2e8f0; min-width: 220px;
+  }
+  #legend h4 {
+    font-size: 11px; font-weight: 700; color: #002d72;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
+  }
+  .legend-gradient { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .legend-bar { height: 14px; border-radius: 4px; flex: 1; }
+  .legend-labels { display: flex; justify-content: space-between; font-size: 10px; color: #555; margin-bottom: 8px; }
+  .legend-nodata { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #666; }
+  .legend-nodata-box { width: 18px; height: 14px; background: #d4dbe8; border-radius: 3px; }
+
+  /* ── MAP INSTRUCTIONS ── */
+  .map-instructions {
+    position: absolute; bottom: 44px; right: 24px;
+    background: rgba(255,255,255,0.9); border-radius: 8px;
+    padding: 10px 14px; font-size: 11px; color: #666;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; line-height: 1.7;
+  }
+  .map-instructions span { font-weight: 600; color: #002d72; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: #001e54;
+    color: rgba(255,255,255,0.55);
+    font-size: 11px;
+    text-align: center;
+    padding: 6px 24px;
+    flex-shrink: 0;
+    border-top: 1px solid rgba(200,169,81,0.2);
+  }
+  footer a {
+    color: #c8a951;
+    text-decoration: none;
+  }
+  footer a:hover { text-decoration: underline; }
+
+  .graticule { fill: none; stroke: rgba(255,255,255,0.25); stroke-width: 0.3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Foreign Gifts &amp; Contracts by Country of Origin</h1>
+    <p>Section 117 Disclosures — Interactive Global Heat Map</p>
+  </div>
+  <div class="header-right">
+    <div class="authors">Ryan Coughlan &amp; Jacob Goldstein</div>
+    <div class="institution">Baruch College · CUNY<br>Marxe School of Public &amp; International Affairs</div>
+  </div>
+</header>
+
+<div class="controls">
+  <label>View:</label>
+  <div class="toggle-group">
+    <button class="toggle-btn active" data-mode="total">Total Gifts &amp; Contracts</button>
+    <button class="toggle-btn" data-mode="restricted">Restricted</button>
+    <button class="toggle-btn" data-mode="unrestricted">Unrestricted</button>
+  </div>
+  <div class="search-wrap">
+    <input type="text" id="country-search" placeholder="Search all 192 countries &amp; territories…" autocomplete="off" spellcheck="false">
+    <div id="search-dropdown"></div>
+  </div>
+  <div class="zoom-controls">
+    <button class="zoom-btn" id="zoomIn">+</button>
+    <button class="zoom-btn" id="zoomOut">−</button>
+    <button class="reset-btn" id="resetView">Reset View</button>
+  </div>
+</div>
+
+<div id="map-container">
+  <svg id="map"></svg>
+  <div id="tooltip"></div>
+  <div id="territory-card">
+    <h3><span id="tc-name"></span><button class="tc-close" id="tc-close">×</button></h3>
+    <p class="tc-note" id="tc-note"></p>
+    <div id="tc-rows"></div>
+  </div>
+  <div id="legend">
+    <h4 id="legend-title">Total Gifts &amp; Contracts</h4>
+    <div class="legend-gradient">
+      <canvas class="legend-bar" id="legendCanvas" height="14"></canvas>
+    </div>
+    <div class="legend-labels">
+      <span>$0</span><span id="legend-mid"></span><span id="legend-max"></span>
+    </div>
+    <div class="legend-nodata"><div class="legend-nodata-box"></div>No data / not on map</div>
+  </div>
+  <div class="map-instructions">
+    <span>Search</span> any country or territory<br>
+    <span>Click</span> map · <span>Drag</span> to pan · <span>Scroll</span> to zoom
+  </div>
+</div>
+
+<footer>
+  Inquiries related to this map may be directed to <a href="mailto:ryan.coughlan@baruch.cuny.edu">ryan.coughlan@baruch.cuny.edu</a>
+</footer>
+
+<script>
+const CANON_DATA = {"Cyprus": {"total": 33202044.0, "restricted": 6250000.0, "unrestricted": 26952044.0}, "Uzbekistan": {"total": 12988790.0, "restricted": 8717919.0, "unrestricted": 4270871.0}, "Belarus": {"total": 299510.0, "restricted": 0, "unrestricted": 299510.0}, "Cura\u00e7ao": {"total": 39763300.85, "restricted": 0, "unrestricted": 39763300.85}, "Eritrea": {"total": 16003.0, "restricted": 0, "unrestricted": 16003.0}, "Lithuania": {"total": 3901960.0, "restricted": 0, "unrestricted": 3901960.0}, "North Macedonia": {"total": 18001.0, "restricted": 0, "unrestricted": 18001.0}, "Panama": {"total": 56756078.0, "restricted": 9681090.74, "unrestricted": 47074987.26}, "Greece": {"total": 128755215.87, "restricted": 4575194.0, "unrestricted": 124180021.87}, "Uganda": {"total": 16801926.29, "restricted": 2742865.9699999997, "unrestricted": 14059060.32}, "Slovenia": {"total": 490740.0, "restricted": 0, "unrestricted": 490740.0}, "Trinidad and Tobago": {"total": 16350061.86, "restricted": 0, "unrestricted": 16350061.86}, "Rwanda": {"total": 74585772.21000001, "restricted": 3861993.21, "unrestricted": 70723779.0}, "Bahamas": {"total": 180042066.98, "restricted": 34067056.9, "unrestricted": 145975010.07999998}, "Monaco": {"total": 154601087.06, "restricted": 61869674.05, "unrestricted": 92731413.00999999}, "St. Kitts and Nevis": {"total": 24635929.0, "restricted": 12693744.0, "unrestricted": 11942185.0}, "Peru": {"total": 112381449.76, "restricted": 12550601.0, "unrestricted": 99830848.76}, "Mexico": {"total": 75472269.0, "restricted": 13082247.0, "unrestricted": 62390022.0}, "Portugal": {"total": 374073308.58000016, "restricted": 68588819.32, "unrestricted": 305484489.26}, "Guernsey": {"total": 464474902.84, "restricted": 369146892.0, "unrestricted": 95328010.84}, "Venezuela": {"total": 15172914.0, "restricted": 420000.0, "unrestricted": 14752914.0}, "Australia": {"total": 954896269.6699998, "restricted": 121758805.72999999, "unrestricted": 833137463.9399999}, "Czech Republic": {"total": 19106413.0, "restricted": 87.0, "unrestricted": 19106326.0}, "Afghanistan": {"total": 29689131.57, "restricted": 10505265.57, "unrestricted": 19183866.0}, "Bolivia": {"total": 4405666.0, "restricted": 3732000.0, "unrestricted": 673666.0}, "Isle of Man": {"total": 9625438.0, "restricted": 3590000.0, "unrestricted": 6035438.0}, "Mongolia": {"total": 2327033.75, "restricted": 336443.75, "unrestricted": 1990590.0}, "Hungary": {"total": 15242810.0, "restricted": 1296193.0, "unrestricted": 13946617.0}, "Malawi": {"total": 18703947.0, "restricted": 12833312.0, "unrestricted": 5870635.0}, "Namibia": {"total": 8131017.0, "restricted": 3652597.0, "unrestricted": 4478420.0}, "Puerto Rico": {"total": 3875479.2199999997, "restricted": 19820.0, "unrestricted": 3855659.2199999997}, "Taiwan": {"total": 533265340.16, "restricted": 74909575.48, "unrestricted": 458355764.67999995}, "British Virgin Islands": {"total": 109607233.0, "restricted": 21341902.0, "unrestricted": 88265331.0}, "Yemen": {"total": 1656871.4, "restricted": 387513.4, "unrestricted": 1269358.0}, "Liberia": {"total": 1343109.0, "restricted": 0, "unrestricted": 1343109.0}, "Israel": {"total": 463871720.24000007, "restricted": 67848846.03, "unrestricted": 396022874.2100001}, "Iceland": {"total": 6480836.0, "restricted": 1210282.0, "unrestricted": 5270554.0}, "Great Britain": {"total": 27746196.0, "restricted": 5270503.0, "unrestricted": 22475693.0}, "Ireland": {"total": 887175524.98, "restricted": 95290527.04999994, "unrestricted": 791884997.93}, "Netherlands": {"total": 909919867.5899998, "restricted": 99769033.64, "unrestricted": 810150833.95}, "Croatia": {"total": 29279984.0, "restricted": 698318.0, "unrestricted": 28581666.0}, "Georgia": {"total": 84321272.0, "restricted": 7319620.0, "unrestricted": 77001652.0}, "Sri Lanka": {"total": 3663491.0, "restricted": 0, "unrestricted": 3663491.0}, "Uruguay": {"total": 6827545.0, "restricted": 0, "unrestricted": 6827545.0}, "Zambia": {"total": 0, "restricted": 2267349.0, "unrestricted": 20990485.29}, "DR Congo": {"total": 347660.0, "restricted": 0, "unrestricted": 347660.0}, "Bosnia and Herzegovina": {"total": 175421.0, "restricted": 0, "unrestricted": 175421.0}, "Malta": {"total": 11077499.11, "restricted": 6251780.11, "unrestricted": 4825719.0}, "Fiji": {"total": 1250000.0, "restricted": 0, "unrestricted": 1250000.0}, "Senegal": {"total": 13145503.0, "restricted": 0, "unrestricted": 13145503.0}, "Pakistan": {"total": 17548227.060000002, "restricted": 5072104.0600000005, "unrestricted": 12476123.0}, "El Salvador": {"total": 5389616.45, "restricted": 0, "unrestricted": 5389616.45}, "Ghana": {"total": 17806371.5, "restricted": 800300.0, "unrestricted": 17006071.5}, "Kenya": {"total": 85678384.19, "restricted": 23780292.0, "unrestricted": 61898092.19}, "Barbados": {"total": 500100.0, "restricted": 500000.0, "unrestricted": 100.0}, "Wales": {"total": 7083448.07, "restricted": 0, "unrestricted": 7083448.07}, "Seychelles": {"total": 1059361.0, "restricted": 1059361.0, "unrestricted": 0}, "Tanzania": {"total": 27083469.3, "restricted": 4897104.0, "unrestricted": 22186365.3}, "Turkey": {"total": 209943339.69, "restricted": 78763144.8, "unrestricted": 131180194.88999999}, "Bahrain": {"total": 106284949.94, "restricted": 6169113.0, "unrestricted": 100115836.94}, "Colombia": {"total": 101135696.53, "restricted": 29012361.46, "unrestricted": 72123335.07}, "Costa Rica": {"total": 29054745.22, "restricted": 1921902.0, "unrestricted": 27132843.22}, "Northern Mariana Islands": {"total": 8032016.0, "restricted": 547176.0, "unrestricted": 7484840.0}, "United Arab Emirates": {"total": 1792228661.3999999, "restricted": 261674179.10000008, "unrestricted": 1530554482.3}, "Gibraltar": {"total": 128375.25, "restricted": 127982.0, "unrestricted": 393.25}, "St. Vincent & Grenadines": {"total": 330000.0, "restricted": 0, "unrestricted": 330000.0}, "Angola": {"total": 9347807.030000001, "restricted": 3718424.0300000003, "unrestricted": 5629383.0}, "Sierra Leone": {"total": 4547544.0, "restricted": 0, "unrestricted": 4547544.0}, "Germany": {"total": 4692443344.54, "restricted": 452345781.71999997, "unrestricted": 4240097562.819999}, "Palestine": {"total": 12178899.0, "restricted": 9043000.0, "unrestricted": 3135899.0}, "French Guiana": {"total": 73137.76, "restricted": 0, "unrestricted": 73137.76}, "Thailand": {"total": 331709436.58000004, "restricted": 67696735.21000001, "unrestricted": 264012701.37}, "Liechtenstein": {"total": 67892762.37, "restricted": 13443482.370000001, "unrestricted": 54449280.0}, "Central African Republic": {"total": 1050061.59, "restricted": 1050061.59, "unrestricted": 0}, "French Polynesia": {"total": 200.0, "restricted": 0, "unrestricted": 200.0}, "Cambodia": {"total": 5954741.08, "restricted": 288732.0, "unrestricted": 5666009.08}, "Vietnam": {"total": 101776807.53999999, "restricted": 18336704.0, "unrestricted": 83440103.53999999}, "Gabon": {"total": 1960641.0, "restricted": 1960641.0, "unrestricted": 0}, "Saudi Arabia": {"total": 4230348029.1739974, "restricted": 1109866916.45, "unrestricted": 3120481112.7239976}, "Brazil": {"total": 556810239.0499994, "restricted": 105448981.93999998, "unrestricted": 451361257.11000013}, "Finland": {"total": 63537653.199999996, "restricted": 5008673.32, "unrestricted": 58528979.879999995}, "Denmark": {"total": 865910320.89, "restricted": 154900517.0, "unrestricted": 711009803.8899999}, "Japan": {"total": 3667630898.84, "restricted": 460535723.24000007, "unrestricted": 3207095175.6}, "Moldova": {"total": 702100.0, "restricted": 0, "unrestricted": 702100.0}, "Egypt": {"total": 179336915.98000002, "restricted": 27519547.98, "unrestricted": 151817368.0}, "Belgium": {"total": 614523526.3399999, "restricted": 68404519.31, "unrestricted": 546119007.03}, "Indonesia": {"total": 480961676.95, "restricted": 120135046.55999999, "unrestricted": 360826630.39}, "Ecuador": {"total": 40158108.0, "restricted": 1125.0, "unrestricted": 40156983.0}, "Lesotho": {"total": 1663171.0, "restricted": 0, "unrestricted": 1663171.0}, "Libya": {"total": 7651142.75, "restricted": 0, "unrestricted": 7651142.75}, "Bermuda": {"total": 1350785996.1499999, "restricted": 130808508.0, "unrestricted": 1219977488.1499999}, "Brunei Darussalam": {"total": 3693182.0, "restricted": 0, "unrestricted": 3693182.0}, "Eswatini": {"total": 20058405.2, "restricted": 387942.0, "unrestricted": 19670463.2}, "Switzerland": {"total": 3752107138.830003, "restricted": 717816840.5400001, "unrestricted": 3034290298.290003}, "Tokelau": {"total": 6000.0, "restricted": 0, "unrestricted": 6000.0}, "Bhutan": {"total": 2581407.0, "restricted": 0, "unrestricted": 2581407.0}, "Ukraine": {"total": 7121534.0, "restricted": 550000.0, "unrestricted": 6571534.0}, "Mali": {"total": 2885758.0, "restricted": 2343557.0, "unrestricted": 542201.0}, "Nauru": {"total": 5051609.0, "restricted": 3884169.0, "unrestricted": 1167440.0}, "Papua New Guinea": {"total": 1965692.32, "restricted": 910094.0, "unrestricted": 1055598.32}, "Spain": {"total": 876895910.68, "restricted": 308797981.16, "unrestricted": 568097929.52}, "Macao": {"total": 444670.85, "restricted": 427890.0, "unrestricted": 16780.85}, "Myanmar": {"total": 13794682.0, "restricted": 2926851.0, "unrestricted": 10867831.0}, "Jersey": {"total": 84048073.0, "restricted": 21987669.0, "unrestricted": 62060404.0}, "Ethiopia": {"total": 8648119.2, "restricted": 97149.47, "unrestricted": 8550969.73}, "Lebanon": {"total": 30772417.86, "restricted": 15235668.86, "unrestricted": 15536749.0}, "Dominican Republic": {"total": 11213139.0, "restricted": 1661498.0, "unrestricted": 9551641.0}, "Northern Ireland": {"total": 962794.4299999999, "restricted": 16775.0, "unrestricted": 946019.4299999999}, "Canada": {"total": 4093965697.3299994, "restricted": 571413937.88, "unrestricted": 3522551759.45}, "Botswana": {"total": 22559787.18, "restricted": 8555236.23, "unrestricted": 14004550.95}, "Cayman Islands": {"total": 144775158.39, "restricted": 27062501.009999998, "unrestricted": 117712657.38}, "Armenia": {"total": 1083911.0, "restricted": 250000.0, "unrestricted": 833911.0}, "C\u00f4te d'Ivoire": {"total": 5010166.0, "restricted": 1680293.0, "unrestricted": 3329873.0}, "Hong Kong": {"total": 1913903167.500001, "restricted": 259964448.97, "unrestricted": 1653938718.5300002}, "Grenada": {"total": 20834295.23, "restricted": 8848349.77, "unrestricted": 11985945.46}, "Nepal": {"total": 576256.0, "restricted": 9980.0, "unrestricted": 566276.0}, "Austria": {"total": 102032462.21000001, "restricted": 14451739.0, "unrestricted": 87580723.21000001}, "United Kingdom": {"total": 2026586648.06, "restricted": 426047591.0, "unrestricted": 1600539057.06}, "Romania": {"total": 5477752.0, "restricted": 860733.0, "unrestricted": 4617019.0}, "Albania": {"total": 9548633.0, "restricted": 9486387.0, "unrestricted": 62246.0}, "Aruba": {"total": 1718302.0, "restricted": 512568.0, "unrestricted": 1205734.0}, "Kosovo": {"total": 6225620.0, "restricted": 6225620.0, "unrestricted": 0}, "Sudan": {"total": 851316.0, "restricted": 851316.0, "unrestricted": 0}, "American Samoa": {"total": 6382377.0, "restricted": 0, "unrestricted": 6382377.0}, "Sweden": {"total": 537671810.9799999, "restricted": 71772741.42, "unrestricted": 465899069.55999994}, "New Zealand": {"total": 70622545.13, "restricted": 8277384.98, "unrestricted": 62345160.15}, "Argentina": {"total": 39919027.09, "restricted": 3737413.0, "unrestricted": 36181614.09}, "China": {"total": 4495956814.799999, "restricted": 894222736.8500001, "unrestricted": 3601734077.9500003}, "Algeria": {"total": 300000.0, "restricted": 0, "unrestricted": 300000.0}, "Norway": {"total": 442760583.6700001, "restricted": 104223109.72, "unrestricted": 338537473.95000005}, "Mozambique": {"total": 10894763.0, "restricted": 1221871.0, "unrestricted": 9672892.0}, "Morocco": {"total": 63036096.0, "restricted": 14902016.0, "unrestricted": 48134080.0}, "Haiti": {"total": 8859153.55, "restricted": 1541843.0, "unrestricted": 7317310.55}, "England": {"total": 4261070768.462997, "restricted": 457412664.70000005, "unrestricted": 3803658103.7629976}, "Marshall Islands": {"total": 1707944.0, "restricted": 404716.0, "unrestricted": 1303228.0}, "Kuwait": {"total": 1598561656.9700007, "restricted": 770761084.6000005, "unrestricted": 827800572.3700002}, "Timor-Leste": {"total": 2699825.0, "restricted": 0, "unrestricted": 2699825.0}, "Tunisia": {"total": 1293701.0, "restricted": 260000.0, "unrestricted": 1033701.0}, "Belize": {"total": 5347378.0, "restricted": 3075378.0, "unrestricted": 2272000.0}, "Bulgaria": {"total": 6398471.0, "restricted": 0, "unrestricted": 6398471.0}, "Nigeria": {"total": 116724760.04999998, "restricted": 32052771.459999997, "unrestricted": 84671988.59}, "Burkina Faso": {"total": 1587303.0, "restricted": 0, "unrestricted": 1587303.0}, "Antigua and Barbuda": {"total": 47843606.0, "restricted": 42858061.0, "unrestricted": 4985545.0}, "Malaysia": {"total": 443908119.02000004, "restricted": 145649784.94, "unrestricted": 298258334.08000004}, "Turks and Caicos": {"total": 964811.42, "restricted": 964811.42, "unrestricted": 0}, "Jamaica": {"total": 5987225.52, "restricted": 0, "unrestricted": 5987225.52}, "Guyana": {"total": 6367927.3, "restricted": 0, "unrestricted": 6367927.3}, "Paraguay": {"total": 2709480.0, "restricted": 0, "unrestricted": 2709480.0}, "Jordan": {"total": 67888944.41, "restricted": 14002032.31, "unrestricted": 53886912.1}, "Chile": {"total": 135135976.35, "restricted": 14912332.629999999, "unrestricted": 120223643.72}, "Luxembourg": {"total": 69988529.73, "restricted": 34984589.0, "unrestricted": 35003940.730000004}, "South Korea": {"total": 1480418182.2499998, "restricted": 277191040.0, "unrestricted": 1203227142.25}, "Syria": {"total": 2605640.71, "restricted": 0, "unrestricted": 2605640.71}, "Christmas Island": {"total": 5904862.0, "restricted": 0, "unrestricted": 5904862.0}, "St. Lucia": {"total": 613960.0, "restricted": 0, "unrestricted": 613960.0}, "Philippines": {"total": 61292468.25, "restricted": 5138864.25, "unrestricted": 56153604.0}, "United Nations": {"total": 64701279.6, "restricted": 19132226.0, "unrestricted": 45569053.6}, "Iran": {"total": 81.0, "restricted": 0, "unrestricted": 81.0}, "Latvia": {"total": 1838445.0, "restricted": 0, "unrestricted": 1838445.0}, "Italy": {"total": 598723893.45, "restricted": 42849314.25, "unrestricted": 555874579.2}, "Micronesia": {"total": 2274739.0, "restricted": 750000.0, "unrestricted": 1524739.0}, "Scotland": {"total": 63152997.8, "restricted": 4610394.9399999995, "unrestricted": 58542602.86}, "France": {"total": 1939349925.520001, "restricted": 342171561.89, "unrestricted": 1597178363.629999}, "Guam": {"total": 1220950.0, "restricted": 428985.0, "unrestricted": 791965.0}, "Qatar": {"total": 7675448019.349999, "restricted": 1717822254.08, "unrestricted": 5957625765.27}, "West Indies": {"total": 3451281.17, "restricted": 0, "unrestricted": 3451281.17}, "Kazakhstan": {"total": 197490259.89999998, "restricted": 31140544.21, "unrestricted": 166349715.69}, "Singapore": {"total": 1655820547.97, "restricted": 318430104.27000004, "unrestricted": 1337390443.7}, "Madagascar": {"total": 5251960.0, "restricted": 0, "unrestricted": 5251960.0}, "British West Indies": {"total": 13581882.0, "restricted": 0, "unrestricted": 13581882.0}, "Guatemala": {"total": 12919403.0, "restricted": 0, "unrestricted": 12919403.0}, "Palau": {"total": 1162374.0, "restricted": 0, "unrestricted": 1162374.0}, "Zimbabwe": {"total": 0, "restricted": 3882133.0, "unrestricted": 3736590.0}, "Andorra": {"total": 6100000.0, "restricted": 4200000.0, "unrestricted": 1900000.0}, "Estonia": {"total": 1298782.0, "restricted": 198782.0, "unrestricted": 1100000.0}, "Poland": {"total": 28709260.369999997, "restricted": 6043983.0, "unrestricted": 22665277.369999997}, "Azerbaijan": {"total": 28346823.0, "restricted": 23053072.0, "unrestricted": 5293751.0}, "Mauritius": {"total": 11226468.0, "restricted": 5772700.0, "unrestricted": 5453768.0}, "South Africa": {"total": 284542258.67, "restricted": 14295971.0, "unrestricted": 270246287.67}, "Tajikistan": {"total": 870819.0, "restricted": 565365.0, "unrestricted": 305454.0}, "Dominica": {"total": 4690136.95, "restricted": 0, "unrestricted": 4690136.95}, "United States (Domestic)": {"total": 97352207.79, "restricted": 30343852.250000007, "unrestricted": 67008355.54}, "Oman": {"total": 274613330.80999994, "restricted": 98644484.13000001, "unrestricted": 175968846.68000004}, "Cameroon": {"total": 2908462.0, "restricted": 0, "unrestricted": 2908462.0}, "Bangladesh": {"total": 28728576.689999998, "restricted": 7647414.0, "unrestricted": 21081162.689999998}, "Russia": {"total": 178082357.0, "restricted": 12124890.0, "unrestricted": 165957467.0}, "Slovakia": {"total": 219.0, "restricted": 198.0, "unrestricted": 21.0}, "Niger": {"total": 255702.0, "restricted": 0, "unrestricted": 255702.0}, "India": {"total": 1226522205.4099998, "restricted": 115355155.08000001, "unrestricted": 1111167050.33}, "Serbia": {"total": 6900407.85, "restricted": 3181198.0, "unrestricted": 3719209.85}, "Iraq": {"total": 53995659.74, "restricted": 196862.74, "unrestricted": 53798797.0}, "Honduras": {"total": 2509165.0, "restricted": 1203992.0, "unrestricted": 1305173.0}};
+
+const CANONICAL_TO_ISO = {
+  'Afghanistan':'004','Albania':'008','Algeria':'012','Angola':'024',
+  'Argentina':'032','Armenia':'051','Australia':'036','Austria':'040',
+  'Azerbaijan':'031','Bangladesh':'050','Belarus':'112','Belgium':'056',
+  'Belize':'084','Bhutan':'064','Bolivia':'068',
+  'Bosnia and Herzegovina':'070','Botswana':'072','Brazil':'076',
+  'Brunei Darussalam':'096','Bulgaria':'100','Burkina Faso':'854',
+  'Cambodia':'116','Cameroon':'120','Canada':'124',
+  'Central African Republic':'140','Chile':'152','China':'156',
+  'Colombia':'170','Costa Rica':'188',"Cote d'Ivoire":'384',
+  "Côte d'Ivoire":'384','Croatia':'191','Cyprus':'196','Czech Republic':'203',
+  'Denmark':'208','Dominican Republic':'214','DR Congo':'180',
+  'Ecuador':'218','Egypt':'818','El Salvador':'222','Eritrea':'232',
+  'Estonia':'233','Ethiopia':'231','Finland':'246','France':'250',
+  'Gabon':'266','Georgia':'268','Germany':'276','Ghana':'288',
+  'Greece':'300','Guatemala':'320','Guyana':'328','Haiti':'332',
+  'Honduras':'340','Hungary':'348','Iceland':'352','India':'356',
+  'Indonesia':'360','Iran':'364','Iraq':'368','Ireland':'372',
+  'Israel':'376','Italy':'380','Japan':'392','Jordan':'400',
+  'Kazakhstan':'398','Kenya':'404','Kuwait':'414','Latvia':'428',
+  'Lebanon':'422','Lesotho':'426','Liberia':'430','Libya':'434',
+  'Lithuania':'440','Luxembourg':'442','Madagascar':'450',
+  'Malawi':'454','Malaysia':'458','Mali':'466','Mexico':'484',
+  'Moldova':'498','Mongolia':'496','Morocco':'504','Mozambique':'508',
+  'Myanmar':'104','Namibia':'516','Nepal':'524','Netherlands':'528',
+  'New Zealand':'554','Niger':'562','Nigeria':'566',
+  'North Macedonia':'807','Norway':'578','Oman':'512','Pakistan':'586',
+  'Palestine':'275','Panama':'591','Papua New Guinea':'598',
+  'Paraguay':'600','Peru':'604','Philippines':'608','Poland':'616',
+  'Portugal':'620','Qatar':'634','Romania':'642','Russia':'643',
+  'Rwanda':'646','Saudi Arabia':'682','Senegal':'686','Serbia':'688',
+  'Sierra Leone':'694','Slovakia':'703','Slovenia':'705',
+  'South Africa':'710','South Korea':'410','Spain':'724',
+  'Sri Lanka':'144','Sudan':'729','Sweden':'752','Switzerland':'756',
+  'Syria':'760','Tajikistan':'762','Tanzania':'834','Thailand':'764',
+  'Timor-Leste':'626','Tunisia':'788','Turkey':'792','Uganda':'800',
+  'Ukraine':'804','United Arab Emirates':'784','United Kingdom':'826',
+  'Uruguay':'858','Uzbekistan':'860','Venezuela':'862','Vietnam':'704',
+  'Yemen':'887','Zambia':'894','Zimbabwe':'716','Eswatini':'748',
+  'Taiwan':'158','Fiji':'242','Jamaica':'388',
+  'Trinidad and Tobago':'780','Malta':'470','Andorra':'020',
+  'Kosovo':'412','Grenada':'308','Lesotho':'426','Palestine':'275',
+};
+
+const ISO_TO_CANONICAL = {};
+for (const [c,iso] of Object.entries(CANONICAL_TO_ISO)) ISO_TO_CANONICAL[iso] = c;
+
+const TERRITORY_COORDS = {
+  'Guernsey':[49.45,-2.59],'Jersey':[49.21,-2.13],'Isle of Man':[54.23,-4.55],
+  'Bermuda':[32.31,-64.75],'Cayman Islands':[19.31,-81.25],
+  'British Virgin Islands':[18.43,-64.62],'American Samoa':[-14.27,-170.13],
+  'Guam':[13.44,144.79],'Northern Mariana Islands':[15.10,145.67],
+  'Puerto Rico':[18.22,-66.59],'Aruba':[12.52,-69.97],'Curaçao':[12.17,-68.99],
+  'England':[52.56,-1.17],'Scotland':[56.49,-4.20],'Wales':[52.13,-3.78],
+  'Northern Ireland':[54.61,-6.69],'Great Britain':[53.00,-1.50],
+  'Monaco':[43.73,7.40],'Liechtenstein':[47.17,9.55],'Gibraltar':[36.13,-5.35],
+  'Nauru':[-0.53,166.92],'Tokelau':[-9.20,-171.84],'Christmas Island':[-10.49,105.63],
+  'Palau':[7.52,134.58],'French Polynesia':[-17.68,-149.41],
+  'French Guiana':[3.93,-53.13],'Macao':[22.17,113.54],'Hong Kong':[22.32,114.17],
+  'Turks and Caicos':[21.69,-71.80],'Marshall Islands':[7.13,171.18],
+  'Micronesia':[7.43,150.55],'St. Kitts and Nevis':[17.36,-62.78],
+  'Antigua and Barbuda':[17.07,-61.80],'Barbados':[13.19,-59.56],
+  'St. Lucia':[13.91,-60.98],'St. Vincent & Grenadines':[13.25,-61.20],
+  'Seychelles':[-4.68,55.49],'Mauritius':[-20.35,57.55],'Singapore':[1.35,103.82],
+  'West Indies':[17.00,-62.00],'British West Indies':[17.00,-62.00],
+  'United Nations':[40.75,-73.97],'United States (Domestic)':[38.00,-97.00],
+  'Dominica':[15.41,-61.37],
+};
+
+function buildDataIndex() {
+  const idx = {};
+  for (const [canonical, vals] of Object.entries(CANON_DATA)) {
+    const iso = CANONICAL_TO_ISO[canonical];
+    if (!iso) continue;
+    if (!idx[iso]) idx[iso] = {total:0,restricted:0,unrestricted:0};
+    idx[iso].total        += vals.total        || 0;
+    idx[iso].restricted   += vals.restricted   || 0;
+    idx[iso].unrestricted += vals.unrestricted || 0;
+  }
+  return idx;
+}
+const dataIndex = buildDataIndex();
+let currentMode = 'total';
+
+function fmt(v) {
+  if (!v || v===0) return '$0';
+  if (v>=1e9) return '$'+(v/1e9).toFixed(2)+'B';
+  if (v>=1e6) return '$'+(v/1e6).toFixed(1)+'M';
+  if (v>=1e3) return '$'+(v/1e3).toFixed(0)+'K';
+  return '$'+v.toFixed(0);
+}
+
+function getColorScale(mode) {
+  const values = Object.values(dataIndex).map(d=>d[mode]).filter(v=>v>0);
+  const maxVal = d3.quantile(values.sort(d3.ascending), 0.97);
+  const colorScale = d3.scaleSequentialLog(d3.interpolate('#c8e4ff','#002d72')).domain([Math.max(1,d3.min(values)),maxVal]);
+  return {colorScale,maxVal};
+}
+
+function updateLegend(mode, colorScale, maxVal) {
+  const titles = {total:'Total Gifts &amp; Contracts',restricted:'Restricted Gifts &amp; Contracts',unrestricted:'Unrestricted Gifts &amp; Contracts'};
+  document.getElementById('legend-title').innerHTML = titles[mode];
+  const canvas = document.getElementById('legendCanvas');
+  const ctx = canvas.getContext('2d');
+  const w = canvas.offsetWidth||180;
+  canvas.width=w; canvas.height=14;
+  for (let i=0;i<w;i++) {
+    const val = Math.exp(Math.log(1)+(i/w)*(Math.log(maxVal)-Math.log(1)));
+    ctx.fillStyle = colorScale(val);
+    ctx.fillRect(i,0,1,14);
+  }
+  document.getElementById('legend-mid').textContent = fmt(maxVal/4);
+  document.getElementById('legend-max').textContent = fmt(maxVal)+'+';
+}
+
+const svg = d3.select('#map');
+const g   = svg.append('g');
+svg.insert('rect',':first-child').attr('width','100%').attr('height','100%').attr('fill','#cdd8e8');
+
+const projection = d3.geoNaturalEarth1().scale(160).translate([0,0]);
+const path = d3.geoPath().projection(projection);
+let currentK = 1;
+
+const zoom = d3.zoom().scaleExtent([0.5,14]).on('zoom',(event)=>{
+  g.attr('transform',event.transform);
+  currentK = event.transform.k;
+  updateLabels(currentK);
+});
+svg.call(zoom);
+
+function centerProjection() {
+  const rect = document.getElementById('map-container').getBoundingClientRect();
+  projection.scale(Math.min(rect.width/6.2,rect.height/3.1)).translate([rect.width/2,rect.height/2]);
+  path.projection(projection);
+}
+
+const tooltip = document.getElementById('tooltip');
+let tooltipPinned = false;
+
+function buildTooltipHTML(name, data) {
+  if (!data) return '<h3>'+name+'</h3><div class="tooltip-row"><span class="tooltip-label">No data reported</span></div>';
+  let html = '<h3>'+name+'</h3>';
+  [['Total Gifts &amp; Contracts',data.total,currentMode==='total'],
+   ['Restricted',data.restricted,currentMode==='restricted'],
+   ['Unrestricted',data.unrestricted,currentMode==='unrestricted']]
+  .forEach(([label,val,hl])=>{
+    html += '<div class="tooltip-row"><span class="tooltip-label">'+label+'</span><span class="tooltip-value'+(hl?' highlight':'')+'">'+fmt(val)+'</span></div>';
+  });
+  return html;
+}
+
+function showTooltip(event,name,isoId) {
+  if (tooltipPinned) return;
+  tooltip.innerHTML = buildTooltipHTML(name, dataIndex[isoId]);
+  tooltip.style.opacity = '1';
+  positionTooltip(event);
+}
+
+function positionTooltip(event) {
+  const c = document.getElementById('map-container').getBoundingClientRect();
+  const x = event.clientX-c.left+14, y = event.clientY-c.top-10;
+  const tw = tooltip.offsetWidth+28, th = tooltip.offsetHeight+20;
+  tooltip.style.left = (x+tw>c.width?x-tw:x)+'px';
+  tooltip.style.top  = (y+th>c.height?y-th+10:y)+'px';
+}
+
+function showPinnedTooltip(name,isoId,screenX,screenY) {
+  const data = dataIndex[isoId] || CANON_DATA[name];
+  tooltip.innerHTML = buildTooltipHTML(name, data);
+  tooltip.style.opacity = '1';
+  tooltipPinned = true;
+  const rect = document.getElementById('map-container').getBoundingClientRect();
+  const x = screenX??rect.width/2, y = screenY??rect.height/2;
+  const tw = tooltip.offsetWidth+28, th = tooltip.offsetHeight+20;
+  tooltip.style.left = (x+tw>rect.width?x-tw+14:x+14)+'px';
+  tooltip.style.top  = (y+th>rect.height?y-th+10:y-10)+'px';
+}
+
+function hideTooltip() { if (tooltipPinned) return; tooltip.style.opacity='0'; }
+function unpinAndHide() { tooltipPinned=false; tooltip.style.opacity='0'; }
+
+const tcCard = document.getElementById('territory-card');
+document.getElementById('tc-close').addEventListener('click',()=>{
+  tcCard.classList.remove('visible');
+  unpinAndHide();
+  if (highlightedIso) {
+    countriesG&&countriesG.selectAll('path').filter(d=>getIsoFromId(d.id)===highlightedIso).classed('country-highlighted',false);
+    highlightedIso=null;
+  }
+  searchInput.value='';
+});
+
+function showTerritoryCard(name) {
+  const data = CANON_DATA[name];
+  document.getElementById('tc-name').textContent = name;
+  const ukSubs = ['England','Scotland','Wales','Northern Ireland','Great Britain'];
+  let note = 'Small territory or dependency — not individually rendered on this map.';
+  if (ukSubs.includes(name)) note = 'UK constituent nation — shown here as part of the United Kingdom.';
+  else if (name==='United Nations') note = 'Reported as donor entity, not a geographic country.';
+  else if (name==='United States (Domestic)') note = 'Domestic U.S. sources reported under Section 117.';
+  else if (name==='West Indies'||name==='British West Indies') note = 'Regional designation covering multiple Caribbean territories.';
+  document.getElementById('tc-note').textContent = note;
+  const rows = document.getElementById('tc-rows');
+  rows.innerHTML='';
+  if (data) {
+    [['Total Gifts &amp; Contracts',data.total,currentMode==='total'],
+     ['Restricted',data.restricted,currentMode==='restricted'],
+     ['Unrestricted',data.unrestricted,currentMode==='unrestricted']]
+    .forEach(([label,val,hl])=>{
+      rows.innerHTML += '<div class="tooltip-row"><span class="tooltip-label">'+label+'</span><span class="tooltip-value'+(hl?' highlight':'')+'">'+fmt(val)+'</span></div>';
+    });
+  }
+  tcCard.classList.add('visible');
+}
+
+const LABEL_TARGET_PX = 10;
+function updateLabels(k) {
+  if (!labelsG) return;
+  labelsG.selectAll('text')
+    .style('display',k>=2.2?null:'none')
+    .attr('font-size',(LABEL_TARGET_PX/k)+'px');
+}
+
+let countriesG, labelsG, highlightedIso=null;
+function getIsoFromId(id) { return String(id).padStart(3,'0'); }
+
+const COUNTRY_LABELS = {
+  '004':'Afghanistan','008':'Albania','012':'Algeria','024':'Angola',
+  '032':'Argentina','051':'Armenia','036':'Australia','040':'Austria',
+  '031':'Azerbaijan','050':'Bangladesh','112':'Belarus','056':'Belgium',
+  '084':'Belize','064':'Bhutan','068':'Bolivia','070':'Bosnia & Herz.',
+  '072':'Botswana','076':'Brazil','096':'Brunei','100':'Bulgaria',
+  '854':'Burkina Faso','116':'Cambodia','120':'Cameroon','124':'Canada',
+  '140':'C.A.R.','152':'Chile','156':'China','170':'Colombia',
+  '188':'Costa Rica',"384":"Côte d'Ivoire",'191':'Croatia','196':'Cyprus',
+  '203':'Czechia','208':'Denmark','214':'Dom. Rep.','180':'DR Congo',
+  '218':'Ecuador','818':'Egypt','222':'El Salvador','232':'Eritrea',
+  '233':'Estonia','231':'Ethiopia','246':'Finland','250':'France',
+  '266':'Gabon','268':'Georgia','276':'Germany','288':'Ghana',
+  '300':'Greece','320':'Guatemala','328':'Guyana','332':'Haiti',
+  '340':'Honduras','348':'Hungary','352':'Iceland','356':'India',
+  '360':'Indonesia','364':'Iran','368':'Iraq','372':'Ireland',
+  '376':'Israel','380':'Italy','392':'Japan','400':'Jordan',
+  '398':'Kazakhstan','404':'Kenya','414':'Kuwait','428':'Latvia',
+  '422':'Lebanon','430':'Liberia','434':'Libya','440':'Lithuania',
+  '442':'Luxembourg','450':'Madagascar','454':'Malawi','458':'Malaysia',
+  '466':'Mali','484':'Mexico','498':'Moldova','496':'Mongolia',
+  '504':'Morocco','508':'Mozambique','104':'Myanmar','516':'Namibia',
+  '524':'Nepal','528':'Netherlands','554':'New Zealand','562':'Niger',
+  '566':'Nigeria','807':'N. Macedonia','578':'Norway','512':'Oman',
+  '586':'Pakistan','591':'Panama','598':'Papua N.G.','600':'Paraguay',
+  '604':'Peru','608':'Philippines','616':'Poland','620':'Portugal',
+  '634':'Qatar','642':'Romania','643':'Russia','646':'Rwanda',
+  '682':'Saudi Arabia','686':'Senegal','688':'Serbia','694':'Sierra Leone',
+  '703':'Slovakia','705':'Slovenia','710':'South Africa','410':'South Korea',
+  '724':'Spain','144':'Sri Lanka','729':'Sudan','752':'Sweden',
+  '756':'Switzerland','760':'Syria','762':'Tajikistan','834':'Tanzania',
+  '764':'Thailand','626':'Timor-Leste','788':'Tunisia','792':'Turkey',
+  '800':'Uganda','804':'Ukraine','784':'UAE','826':'United Kingdom',
+  '858':'Uruguay','860':'Uzbekistan','862':'Venezuela','704':'Vietnam',
+  '887':'Yemen','894':'Zambia','716':'Zimbabwe','748':'Eswatini',
+  '158':'Taiwan','242':'Fiji','388':'Jamaica','780':'Trinidad',
+  '470':'Malta','020':'Andorra','412':'Kosovo','308':'Grenada',
+  '426':'Lesotho','275':'Palestine',
+};
+
+fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+  .then(r=>r.json())
+  .then(world=>{
+    centerProjection();
+    const graticule = d3.geoGraticule();
+    g.append('path').datum(graticule()).attr('class','graticule').attr('d',path);
+    countriesG = g.append('g').attr('class','countries');
+    labelsG    = g.append('g').attr('class','labels');
+    const countries = topojson.feature(world,world.objects.countries).features;
+
+    countriesG.selectAll('path').data(countries).join('path')
+      .attr('class','country').attr('d',path)
+      .on('mousemove',function(event,d){
+        const iso = getIsoFromId(d.id);
+        showTooltip(event, ISO_TO_CANONICAL[iso]||COUNTRY_LABELS[iso]||'Unknown', iso);
+      })
+      .on('mouseout',hideTooltip)
+      .on('click',function(event,d){
+        event.stopPropagation();
+        tcCard.classList.remove('visible');
+        unpinAndHide();
+        const iso  = getIsoFromId(d.id);
+        const name = ISO_TO_CANONICAL[iso]||COUNTRY_LABELS[iso]||'Unknown';
+        if (highlightedIso&&highlightedIso!==iso)
+          countriesG.selectAll('path').filter(x=>getIsoFromId(x.id)===highlightedIso).classed('country-highlighted',false);
+        highlightedIso = iso;
+        countriesG.selectAll('path').filter(x=>getIsoFromId(x.id)===iso).classed('country-highlighted',true).raise();
+        tooltipPinned=false;
+        const rect=document.getElementById('map-container').getBoundingClientRect();
+        showPinnedTooltip(name,iso,event.clientX-rect.left,event.clientY-rect.top);
+        searchInput.value=name;
+      });
+
+    svg.on('click',()=>{
+      unpinAndHide();
+      tcCard.classList.remove('visible');
+      if (highlightedIso){
+        countriesG.selectAll('path').filter(d=>getIsoFromId(d.id)===highlightedIso).classed('country-highlighted',false);
+        highlightedIso=null;
+      }
+    });
+
+    labelsG.selectAll('text').data(countries).join('text')
+      .attr('class','country-label')
+      .attr('transform',d=>{const c=path.centroid(d);return isNaN(c[0])?'translate(-9999,-9999)':'translate('+c+')';})
+      .text(d=>COUNTRY_LABELS[getIsoFromId(d.id)]||'')
+      .style('display','none');
+
+    applyColors(currentMode);
+
+    const [[x0,y0],[x1,y1]] = path.bounds({type:'Sphere'});
+    const rect = document.getElementById('map-container').getBoundingClientRect();
+    svg.call(zoom.transform, d3.zoomIdentity
+      .translate(rect.width/2,rect.height/2)
+      .scale(Math.min(rect.width/(x1-x0),rect.height/(y1-y0))*0.97)
+      .translate(-(x0+x1)/2,-(y0+y1)/2));
+  });
+
+function applyColors(mode) {
+  if (!countriesG) return;
+  const {colorScale,maxVal} = getColorScale(mode);
+  countriesG.selectAll('path').attr('fill',d=>{
+    const iso=getIsoFromId(d.id), data=dataIndex[iso];
+    if (!data||data[mode]===0) return '#d4dbe8';
+    return colorScale(Math.max(1,data[mode]));
+  });
+  updateLegend(mode,colorScale,maxVal);
+  if (tcCard.classList.contains('visible'))
+    showTerritoryCard(document.getElementById('tc-name').textContent);
+}
+
+const SEARCH_ENTRIES = Object.keys(CANON_DATA)
+  .sort((a,b)=>a.localeCompare(b))
+  .map(name=>({label:name,iso:CANONICAL_TO_ISO[name]||null,coords:TERRITORY_COORDS[name]||null,isTerritory:!CANONICAL_TO_ISO[name]}));
+
+function escapeRegex(s){return s.replace(/[-[\]/{}()*+?.\^$|]/g,'\$&');}
+
+const searchInput = document.getElementById('country-search');
+const dropdown    = document.getElementById('search-dropdown');
+let ddActiveIdx=-1, ddItems=[];
+
+function renderDropdown(query) {
+  dropdown.innerHTML=''; ddItems=[]; ddActiveIdx=-1;
+  if (!query||!query.trim()){dropdown.classList.remove('open');return;}
+  const re=new RegExp(escapeRegex(query.trim()),'i');
+  const matches=SEARCH_ENTRIES.filter(e=>re.test(e.label)).slice(0,12);
+  if (matches.length===0){
+    dropdown.innerHTML='<div class="search-no-results">No matching countries found</div>';
+    dropdown.classList.add('open');return;
+  }
+  matches.forEach(entry=>{
+    const div=document.createElement('div');
+    div.className='search-item';
+    div.innerHTML=entry.label.replace(re,m=>'<em>'+m+'</em>')
+      +(entry.isTerritory?' <span class="tag-territory">Territory</span>':'');
+    div.addEventListener('mousedown',e=>{e.preventDefault();selectCountry(entry);});
+    dropdown.appendChild(div);
+    ddItems.push({el:div,entry});
+  });
+  dropdown.classList.add('open');
+}
+
+function setActiveItem(idx){
+  ddItems.forEach(({el})=>el.classList.remove('active-item'));
+  ddActiveIdx=idx;
+  if (idx>=0&&idx<ddItems.length){ddItems[idx].el.classList.add('active-item');ddItems[idx].el.scrollIntoView({block:'nearest'});}
+}
+
+searchInput.addEventListener('input',()=>renderDropdown(searchInput.value));
+searchInput.addEventListener('keydown',e=>{
+  if (!dropdown.classList.contains('open')) return;
+  if (e.key==='ArrowDown'){e.preventDefault();setActiveItem(Math.min(ddActiveIdx+1,ddItems.length-1));}
+  else if (e.key==='ArrowUp'){e.preventDefault();setActiveItem(Math.max(ddActiveIdx-1,0));}
+  else if (e.key==='Enter'){e.preventDefault();if (ddActiveIdx>=0&&ddItems[ddActiveIdx])selectCountry(ddItems[ddActiveIdx].entry);}
+  else if (e.key==='Escape'){dropdown.classList.remove('open');searchInput.blur();}
+});
+searchInput.addEventListener('blur',()=>setTimeout(()=>dropdown.classList.remove('open'),150));
+
+function selectCountry(entry) {
+  searchInput.value=entry.label;
+  dropdown.classList.remove('open');
+  tcCard.classList.remove('visible');
+  unpinAndHide();
+  clearHighlight();
+  if (entry.iso) flyToIso(entry.iso,entry.label,entry.coords);
+  else panToTerritory(entry.label,entry.coords);
+}
+
+function clearHighlight() {
+  if (highlightedIso&&countriesG){
+    countriesG.selectAll('path').filter(d=>getIsoFromId(d.id)===highlightedIso).classed('country-highlighted',false);
+    highlightedIso=null;
+  }
+}
+
+function flyToIso(iso,displayName,fallbackCoords) {
+  if (!countriesG) return;
+  let targetFeature=null;
+  countriesG.selectAll('path').each(function(d){if (getIsoFromId(d.id)===iso) targetFeature=d;});
+  if (!targetFeature){panToTerritory(displayName,fallbackCoords||TERRITORY_COORDS[displayName]);return;}
+  highlightedIso=iso;
+  countriesG.selectAll('path').filter(d=>getIsoFromId(d.id)===iso).classed('country-highlighted',true).raise();
+  const bounds=path.bounds(targetFeature);
+  const bW=bounds[1][0]-bounds[0][0],bH=bounds[1][1]-bounds[0][1];
+  const cx=(bounds[0][0]+bounds[1][0])/2,cy=(bounds[0][1]+bounds[1][1])/2;
+  const rect=document.getElementById('map-container').getBoundingClientRect();
+  const k=Math.min((rect.width-200)/Math.max(bW,1),(rect.height-200)/Math.max(bH,1),12);
+  const t=d3.zoomIdentity.translate(rect.width/2,rect.height/2).scale(k).translate(-cx,-cy);
+  svg.transition().duration(750).call(zoom.transform,t).on('end',()=>{
+    const c=path.centroid(targetFeature);
+    showPinnedTooltip(displayName,iso,t.applyX(c[0]),t.applyY(c[1]));
+  });
+}
+
+function panToTerritory(name,coords) {
+  showTerritoryCard(name);
+  if (!coords||!projection) return;
+  const pt=projection([coords[1],coords[0]]);
+  if (!pt||isNaN(pt[0])) return;
+  const rect=document.getElementById('map-container').getBoundingClientRect();
+  const k=Math.max(currentK,6);
+  svg.transition().duration(750).call(zoom.transform,
+    d3.zoomIdentity.translate(rect.width/2,rect.height/2).scale(k).translate(-pt[0],-pt[1]));
+}
+
+document.querySelectorAll('.toggle-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode=btn.dataset.mode;
+    applyColors(currentMode);
+  });
+});
+
+document.getElementById('zoomIn').addEventListener('click',()=>svg.transition().duration(300).call(zoom.scaleBy,1.5));
+document.getElementById('zoomOut').addEventListener('click',()=>svg.transition().duration(300).call(zoom.scaleBy,0.67));
+document.getElementById('resetView').addEventListener('click',()=>{
+  if (!countriesG) return;
+  searchInput.value='';
+  clearHighlight();
+  unpinAndHide();
+  tcCard.classList.remove('visible');
+  centerProjection();
+  const rect=document.getElementById('map-container').getBoundingClientRect();
+  const [[x0,y0],[x1,y1]]=path.bounds({type:'Sphere'});
+  svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity
+    .translate(rect.width/2,rect.height/2)
+    .scale(Math.min(rect.width/(x1-x0),rect.height/(y1-y0))*0.97)
+    .translate(-(x0+x1)/2,-(y0+y1)/2));
+  countriesG.selectAll('path').attr('d',path);
+  labelsG.selectAll('text').attr('transform',d=>{const c=path.centroid(d);return isNaN(c[0])?'translate(-9999,-9999)':'translate('+c+')';});
+});
+
+window.addEventListener('resize',()=>{
+  if (!countriesG) return;
+  centerProjection();
+  countriesG.selectAll('path').attr('d',path);
+  labelsG.selectAll('text').attr('transform',d=>{const c=path.centroid(d);return isNaN(c[0])?'translate(-9999,-9999)':'translate('+c+')';});
+});
+</script>
+</body>
+</html>
