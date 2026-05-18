@@ -65,18 +65,18 @@
   .map-wrap { flex: 1; position: relative; overflow: hidden; background: var(--bg); }
   svg.map { display: block; width: 100%; height: 100%; cursor: grab; background: var(--bg); }
   svg.map:active { cursor: grabbing; }
-  .country { fill: var(--map-base); stroke: var(--map-stroke); stroke-width: 0.4; }
+  .country { fill: var(--map-base); stroke: var(--map-stroke); stroke-width: 0.4; vector-effect: non-scaling-stroke; }
   .country.highlight { fill: #f5d9be; }
-  .graticule { fill: none; stroke: #efefef; stroke-width: 0.3; stroke-dasharray: 2 3; }
-  .sphere { fill: var(--bg); stroke: var(--line); stroke-width: 0.5; }
+  .graticule { fill: none; stroke: #efefef; stroke-width: 0.3; stroke-dasharray: 2 3; vector-effect: non-scaling-stroke; }
+  .sphere { fill: var(--bg); stroke: var(--line); stroke-width: 0.5; vector-effect: non-scaling-stroke; }
 
-  .inst-dot { fill: #888; stroke: #fff; stroke-width: 0.5; cursor: pointer; transition: fill 0.15s, r 0.15s; }
+  .inst-dot { fill: #888; stroke: #fff; stroke-width: 0.5; cursor: pointer; transition: fill 0.15s, r 0.15s; vector-effect: non-scaling-stroke; }
   .inst-dot:hover { fill: var(--color-inst); }
   .inst-dot.selected { fill: var(--color-inst); }
-  .country-dot { fill: #d95a2b; stroke: #fff; stroke-width: 0.6; cursor: pointer; }
+  .country-dot { fill: #d95a2b; stroke: #fff; stroke-width: 0.6; cursor: pointer; vector-effect: non-scaling-stroke; }
   .country-dot.unr { fill: var(--color-unr); }
   .country-dot.mix { fill: var(--color-res); }
-  .flow { fill: none; stroke-linecap: round; cursor: pointer; pointer-events: stroke; }
+  .flow { fill: none; stroke-linecap: round; cursor: pointer; pointer-events: stroke; vector-effect: non-scaling-stroke; }
   .flow.unr { stroke: var(--color-unr); }
   .flow.res { stroke: var(--color-res); }
   .flow:hover { stroke-opacity: 1 !important; }
@@ -229,10 +229,8 @@ const gDots = g.append("g");
 
 const zoom = d3.zoom().scaleExtent([1, 50]).on("zoom", (e) => {
   g.attr("transform", e.transform);
-  gCountries.selectAll(".country").attr("stroke-width", 0.4 / e.transform.k);
   gDots.selectAll(".inst-dot").attr("r", function() { return (this.classList.contains("selected") ? 5 : 2.6) / e.transform.k; });
   gDots.selectAll(".country-dot").attr("r", function() { return +this.dataset.baseR / e.transform.k; });
-  gFlows.selectAll(".flow").attr("stroke-width", function() { return +this.dataset.baseW / e.transform.k; });
 });
 svg.call(zoom);
 
