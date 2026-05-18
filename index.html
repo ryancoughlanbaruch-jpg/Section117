@@ -3,631 +3,457 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Foreign Gifts & Contracts by Country of Origin</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<title>Foreign Gifts &amp; Contracts by Country of Origin</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #1a1a2e; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  :root {
+    --bg: #ffffff;
+    --ink: #1a1a1a;
+    --muted: #6b6b6b;
+    --line: #e5e5e5;
+    --accent: #1f4e8a;
+    --map-base: #f0eee8;
+    --map-stroke: #ffffff;
+    --no-data: #e8e6e0;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: var(--ink); background: var(--bg); }
+  body { display: flex; flex-direction: column; min-height: 100vh; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
 
-  /* ── NAV ── */
-  .map-nav { background: #001e54; display: flex; align-items: stretch; flex-shrink: 0; border-bottom: 2px solid rgba(200,169,81,0.35); }
-  .map-nav a { display: inline-flex; align-items: center; padding: 9px 22px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); text-decoration: none; letter-spacing: 0.3px; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
-  .map-nav a:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.05); }
-  .map-nav a.active { color: #c8a951; border-bottom: 3px solid #c8a951; background: rgba(200,169,81,0.08); }
-  .map-nav .nav-divider { width: 1px; background: rgba(255,255,255,0.12); margin: 6px 0; flex-shrink: 0; }
+  .nav { display: flex; gap: 0; border-bottom: 1px solid var(--line); padding: 0 24px; background: #fafafa; }
+  .nav a { padding: 12px 18px; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; }
+  .nav a.active { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
 
-  /* ── HEADER ── */
-  header { background: linear-gradient(135deg, #002d72 0%, #003a8c 100%); color: white; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
-  .header-left h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
-  .header-left p { font-size: 12px; opacity: 0.75; margin-top: 2px; }
-  .header-right { font-size: 11px; text-align: right; line-height: 1.65; }
-  .header-right .authors { font-size: 12px; font-weight: 600; color: #c8a951; margin-bottom: 1px; }
-  .header-right .institution { opacity: 0.65; }
+  header { padding: 24px 32px 16px; border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0 0 6px; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  header .sub { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  header .auth { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  header .auth strong { color: var(--ink); font-weight: 500; }
 
-  /* ── CONTROLS ── */
-  .controls { background: white; padding: 10px 24px; display: flex; align-items: center; gap: 12px; border-bottom: 2px solid #e2e8f0; flex-shrink: 0; flex-wrap: wrap; }
-  .controls label { font-size: 12px; font-weight: 600; color: #444; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px; }
-  .toggle-group { display: flex; background: #f0f4f8; border-radius: 8px; padding: 3px; gap: 2px; }
-  .toggle-btn { padding: 7px 16px; border: none; background: transparent; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: #555; transition: all 0.2s ease; white-space: nowrap; }
-  .toggle-btn.active { background: #002d72; color: white; box-shadow: 0 1px 4px rgba(0,45,114,0.4); }
-  .toggle-btn:hover:not(.active) { background: #e0e7f0; color: #002d72; }
-  .zoom-controls { display: flex; gap: 6px; margin-left: auto; }
-  .zoom-btn { width: 30px; height: 30px; border: 1.5px solid #002d72; background: white; color: #002d72; font-size: 18px; font-weight: 600; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
-  .zoom-btn:hover { background: #002d72; color: white; }
-  .reset-btn { padding: 7px 14px; border: 1.5px solid #002d72; background: white; color: #002d72; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
-  .reset-btn:hover { background: #002d72; color: white; }
+  .toolbar { display: flex; align-items: center; gap: 16px; padding: 12px 32px; border-bottom: 1px solid var(--line); flex-wrap: wrap; background: #fafafa; }
+  .toolbar label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-right: 4px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #fff; }
+  .seg button { background: transparent; border: 0; padding: 6px 14px; font-size: 13px; color: var(--ink); cursor: pointer; border-right: 1px solid var(--line); }
+  .seg button:last-child { border-right: 0; }
+  .seg button.active { background: var(--accent); color: #fff; }
+  .seg button:hover:not(.active) { background: #f0f0f0; }
+  .search { flex: 1; min-width: 200px; max-width: 320px; position: relative; }
+  .search input { width: 100%; padding: 7px 12px; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; outline: none; background: #fff; }
+  .search input:focus { border-color: var(--accent); }
+  .search ul { position: absolute; top: 100%; left: 0; right: 0; max-height: 240px; overflow-y: auto; background: #fff; border: 1px solid var(--line); border-radius: 6px; margin: 4px 0 0; padding: 0; list-style: none; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: none; }
+  .search ul.show { display: block; }
+  .search li { padding: 7px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f4f4f4; }
+  .search li:last-child { border-bottom: 0; }
+  .search li:hover, .search li.hl { background: #f5f7fa; }
+  .zoom-btns { display: inline-flex; gap: 4px; }
+  .zoom-btns button { width: 30px; height: 30px; border: 1px solid var(--line); background: #fff; border-radius: 6px; font-size: 16px; cursor: pointer; color: var(--ink); }
+  .zoom-btns button:hover { background: #f0f0f0; }
+  .reset { padding: 6px 12px; font-size: 12px; border: 1px solid var(--line); background: #fff; border-radius: 6px; cursor: pointer; color: var(--ink); }
+  .reset:hover { background: #f0f0f0; }
 
-  /* ── SEARCH ── */
-  .search-wrap { position: relative; }
-  #country-search { padding: 7px 34px 7px 12px; border: 1.5px solid #cbd5e0; border-radius: 8px; font-size: 13px; width: 210px; outline: none; color: #1a1a2e; background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat right 10px center; transition: border-color 0.2s; }
-  #country-search:focus { border-color: #002d72; background-color: white; }
-  #country-search::placeholder { color: #aaa; }
-  #search-dropdown { position: absolute; top: calc(100% + 4px); left: 0; width: 220px; background: white; border: 1.5px solid #cbd5e0; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.12); z-index: 200; display: none; max-height: 240px; overflow-y: auto; }
-  #search-dropdown.open { display: block; }
-  .search-item { padding: 9px 14px; font-size: 13px; cursor: pointer; color: #1a1a2e; transition: background 0.12s; border-bottom: 1px solid #f0f4f8; display: flex; align-items: center; gap: 6px; }
-  .search-item:last-child { border-bottom: none; }
-  .search-item:hover, .search-item.active-item { background: #eef2fb; color: #002d72; font-weight: 600; }
-  .search-item em { font-style: normal; color: #002d72; font-weight: 700; }
-  .search-item .tag-territory { font-size: 9px; background: #f0e8d0; color: #7a5c10; border-radius: 3px; padding: 1px 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; flex-shrink: 0; }
-  .search-no-results { padding: 9px 14px; font-size: 12px; color: #999; font-style: italic; }
+  .stats { padding: 8px 32px; font-size: 12px; color: var(--muted); background: #fafafa; border-bottom: 1px solid var(--line); }
+  .stats strong { color: var(--ink); font-weight: 600; }
 
-  /* ── MAP ── */
-  #map-container { flex: 1; position: relative; overflow: hidden; }
-  svg { width: 100%; height: 100%; cursor: grab; }
-  svg:active { cursor: grabbing; }
-  .country { stroke: #ffffff; stroke-width: 0.4px; }
-  .country:hover { stroke: #c8a951; stroke-width: 1.5px; cursor: pointer; }
-  .country-highlighted { stroke: #c8a951 !important; stroke-width: 2px !important; filter: brightness(1.2); }
-  .country-label { fill: rgba(255,255,255,0.92); text-anchor: middle; pointer-events: none; font-weight: 600; paint-order: stroke; stroke: rgba(0,0,0,0.45); stroke-width: 2px; stroke-linejoin: round; }
+  .map-wrap { flex: 1; position: relative; overflow: hidden; background: var(--bg); }
+  svg.map { display: block; width: 100%; height: 100%; cursor: grab; background: var(--bg); }
+  svg.map:active { cursor: grabbing; }
+  .country { fill: var(--no-data); stroke: var(--map-stroke); stroke-width: 0.4; transition: fill 0.15s ease; cursor: pointer; }
+  .country:hover { stroke: var(--ink); stroke-width: 1; }
+  .country.selected { stroke: var(--ink); stroke-width: 1.5; }
+  .graticule { fill: none; stroke: #e8e8e8; stroke-width: 0.4; stroke-dasharray: 2 3; }
+  .sphere { fill: var(--bg); stroke: var(--line); stroke-width: 0.5; }
 
-  /* ── TOOLTIP ── */
-  #tooltip { position: absolute; background: rgba(0,25,65,0.95); color: white; padding: 14px 18px; border-radius: 10px; font-size: 13px; pointer-events: none; opacity: 0; transition: opacity 0.15s; max-width: 280px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid rgba(200,169,81,0.4); z-index: 100; }
-  #tooltip h3 { font-size: 15px; font-weight: 700; margin-bottom: 10px; color: #c8a951; border-bottom: 1px solid rgba(200,169,81,0.3); padding-bottom: 8px; }
-  .tooltip-row { display: flex; justify-content: space-between; align-items: center; margin: 5px 0; gap: 16px; }
-  .tooltip-label { font-size: 11px; color: rgba(255,255,255,0.65); text-transform: uppercase; letter-spacing: 0.3px; }
-  .tooltip-value { font-size: 13px; font-weight: 600; color: white; text-align: right; }
-  .tooltip-value.highlight { color: #c8a951; }
+  .legend { position: absolute; left: 24px; bottom: 24px; background: rgba(255,255,255,0.95); padding: 12px 16px; border: 1px solid var(--line); border-radius: 8px; font-size: 11px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .legend .title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 6px; }
+  .legend .gradient { width: 220px; height: 12px; border-radius: 2px; margin-bottom: 4px; }
+  .legend .ticks { display: flex; justify-content: space-between; color: var(--muted); }
+  .legend .nodata { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--muted); }
+  .legend .nodata .sw { width: 14px; height: 14px; background: var(--no-data); border: 1px solid var(--line); border-radius: 2px; }
 
-  /* ── TERRITORY CARD ── */
-  #territory-card { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,25,65,0.96); color: white; padding: 16px 20px; border-radius: 12px; font-size: 13px; max-width: 320px; min-width: 260px; box-shadow: 0 4px 24px rgba(0,0,0,0.45); border: 1px solid rgba(200,169,81,0.5); z-index: 110; display: none; }
-  #territory-card.visible { display: block; }
-  #territory-card h3 { font-size: 15px; font-weight: 700; color: #c8a951; border-bottom: 1px solid rgba(200,169,81,0.3); padding-bottom: 8px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
-  .tc-close { background: none; border: none; color: rgba(255,255,255,0.5); font-size: 18px; cursor: pointer; padding: 0; line-height: 1; transition: color 0.15s; }
-  .tc-close:hover { color: white; }
-  .tc-note { font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 10px; font-style: italic; }
+  .tooltip { position: absolute; pointer-events: none; background: rgba(26,26,26,0.95); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 12px; line-height: 1.5; max-width: 260px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); opacity: 0; transition: opacity 0.1s; z-index: 50; }
+  .tooltip.show { opacity: 1; }
+  .tooltip .name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .tooltip .val { font-variant-numeric: tabular-nums; }
+  .tooltip .row { display: flex; justify-content: space-between; gap: 16px; }
+  .tooltip .row span:first-child { color: #d0d0d0; }
 
-  /* ── LEGEND ── */
-  #legend { position: absolute; bottom: 44px; left: 24px; background: rgba(255,255,255,0.96); border-radius: 10px; padding: 14px 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; min-width: 220px; }
-  #legend h4 { font-size: 11px; font-weight: 700; color: #002d72; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
-  .legend-gradient { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  .legend-bar { height: 14px; border-radius: 4px; flex: 1; }
-  .legend-labels { display: flex; justify-content: space-between; font-size: 10px; color: #555; margin-bottom: 8px; }
-  .legend-nodata { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #666; }
-  .legend-nodata-box { width: 18px; height: 14px; background: #d4dbe8; border-radius: 3px; }
-  .map-instructions { position: absolute; bottom: 44px; right: 24px; background: rgba(255,255,255,0.9); border-radius: 8px; padding: 10px 14px; font-size: 11px; color: #666; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; line-height: 1.7; }
-  .map-instructions span { font-weight: 600; color: #002d72; }
+  .panel { position: absolute; right: 24px; top: 24px; width: 320px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); display: none; z-index: 40; }
+  .panel.show { display: block; }
+  .panel .close { position: absolute; top: 10px; right: 12px; background: none; border: 0; font-size: 18px; cursor: pointer; color: var(--muted); padding: 0; line-height: 1; }
+  .panel h3 { margin: 0 0 8px; font-size: 16px; font-weight: 600; padding-right: 20px; }
+  .panel .metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 12px; margin-bottom: 2px; }
+  .panel .metric-value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .panel .split { display: flex; gap: 12px; margin-top: 10px; }
+  .panel .split > div { flex: 1; padding: 10px; background: #f7f7f4; border-radius: 6px; }
+  .panel .split .l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .panel .split .v { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .panel .meta { font-size: 12px; color: var(--muted); margin-top: 12px; line-height: 1.6; }
+  .panel .meta strong { color: var(--ink); font-weight: 500; }
 
-  /* ── FOOTER ── */
-  footer { background: #001e54; color: rgba(255,255,255,0.55); font-size: 11px; text-align: center; padding: 6px 24px; flex-shrink: 0; border-top: 1px solid rgba(200,169,81,0.2); }
-  footer a { color: #c8a951; text-decoration: none; }
-  footer a:hover { text-decoration: underline; }
+  footer { padding: 12px 32px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); text-align: center; background: #fafafa; }
 
-  .graticule { fill: none; stroke: rgba(255,255,255,0.25); stroke-width: 0.3px; }
+  @media (max-width: 720px) {
+    header { padding: 16px 16px 12px; }
+    .nav, .toolbar, .stats, footer { padding-left: 16px; padding-right: 16px; }
+    .toolbar { gap: 8px; }
+    .panel { right: 12px; top: 12px; width: calc(100% - 24px); max-width: 320px; }
+    .legend { left: 12px; bottom: 12px; }
+    .legend .gradient { width: 160px; }
+  }
 </style>
 </head>
 <body>
 
-<nav class="map-nav">
+<nav class="nav">
   <a href="index.html" class="active">Foreign Gifts and Contracts by Country of Origin</a>
-  <div class="nav-divider"></div>
   <a href="foreign_funding_map.html">Foreign Gifts and Contracts by Institution</a>
 </nav>
 
 <header>
-  <div class="header-left">
-    <h1>Foreign Gifts &amp; Contracts by Country of Origin</h1>
-    <p>Section 117 Disclosures — Interactive Global Heat Map</p>
-  </div>
-  <div class="header-right">
-    <div class="authors">Ryan Coughlan &amp; Jacob Goldstein</div>
-    <div class="institution">Baruch College · CUNY<br>Marxe School of Public &amp; International Affairs</div>
-  </div>
+  <h1>Foreign Gifts &amp; Contracts by Country of Origin</h1>
+  <div class="sub">Section 117 Disclosures &middot; Interactive Global Heat Map</div>
 </header>
 
-<div class="controls">
-  <label>View:</label>
-  <div class="toggle-group">
-    <button class="toggle-btn active" data-mode="total">Total Gifts &amp; Contracts</button>
-    <button class="toggle-btn" data-mode="restricted">Restricted</button>
-    <button class="toggle-btn" data-mode="unrestricted">Unrestricted</button>
+<div class="toolbar">
+  <label>View</label>
+  <div class="seg" id="viewSeg">
+    <button data-view="total" class="active">Total Gifts &amp; Contracts</button>
+    <button data-view="restricted">Restricted</button>
+    <button data-view="unrestricted">Unrestricted</button>
   </div>
-  <div class="search-wrap">
-    <input type="text" id="country-search" placeholder="Search all 192 countries &amp; territories…" autocomplete="off" spellcheck="false">
-    <div id="search-dropdown"></div>
+  <div class="search">
+    <input type="text" id="searchInput" placeholder="Search any country or territory" autocomplete="off">
+    <ul id="searchList"></ul>
   </div>
-  <div class="zoom-controls">
-    <button class="zoom-btn" id="zoomIn">+</button>
-    <button class="zoom-btn" id="zoomOut">−</button>
-    <button class="reset-btn" id="resetView">Reset View</button>
+  <div class="zoom-btns">
+    <button id="zoomIn" title="Zoom in">+</button>
+    <button id="zoomOut" title="Zoom out">&minus;</button>
   </div>
+  <button class="reset" id="resetView">Reset View</button>
 </div>
 
-<div id="map-container">
-  <svg id="map"></svg>
-  <div id="tooltip"></div>
-  <div id="territory-card">
-    <h3><span id="tc-name"></span><button class="tc-close" id="tc-close">×</button></h3>
-    <p class="tc-note" id="tc-note"></p>
-    <div id="tc-rows"></div>
-  </div>
-  <div id="legend">
-    <h4 id="legend-title">Total Gifts &amp; Contracts</h4>
-    <div class="legend-gradient">
-      <canvas class="legend-bar" id="legendCanvas" height="14"></canvas>
+<div class="stats" id="stats"></div>
+
+<div class="map-wrap">
+  <svg class="map" id="map"></svg>
+  <div class="legend">
+    <div class="title" id="legendTitle">Total Gifts &amp; Contracts</div>
+    <div class="gradient" id="legendGrad"></div>
+    <div class="ticks" id="legendTicks">
+      <span>$0</span><span>$100M</span><span>$1B</span><span>$10B</span>
     </div>
-    <div class="legend-labels">
-      <span>$0</span><span id="legend-mid"></span><span id="legend-max"></span>
-    </div>
-    <div class="legend-nodata"><div class="legend-nodata-box"></div>No data / not on map</div>
+    <div class="nodata"><span class="sw"></span><span>No data / not on map</span></div>
   </div>
-  <div class="map-instructions">
-    <span>Search</span> any country or territory<br>
-    <span>Click</span> map · <span>Drag</span> to pan · <span>Scroll</span> to zoom
+  <div class="tooltip" id="tooltip"></div>
+  <div class="panel" id="panel">
+    <button class="close" id="panelClose">&times;</button>
+    <h3 id="panelName"></h3>
+    <div class="metric-label" id="panelMetricLabel">Total Gifts &amp; Contracts</div>
+    <div class="metric-value" id="panelMetricValue">$0</div>
+    <div class="split">
+      <div><div class="l">Restricted</div><div class="v" id="panelRestricted">$0</div></div>
+      <div><div class="l">Unrestricted</div><div class="v" id="panelUnrestricted">$0</div></div>
+    </div>
+    <div class="meta" id="panelMeta"></div>
   </div>
 </div>
 
 <footer>
-  Inquiries related to this map may be directed to <a href="mailto:ryan.coughlan@baruch.cuny.edu">ryan.coughlan@baruch.cuny.edu</a>
+  <div>Data current through February 23, 2026 &middot; Reported in constant 2024 dollars (BEA GDP deflator)</div>
+  <div style="margin-top:4px;">Ryan Coughlan &amp; Jacob Goldstein &middot; Baruch College, CUNY &middot; Marxe School of Public &amp; International Affairs &middot; Inquiries: <a href="mailto:ryan.coughlan@baruch.cuny.edu">ryan.coughlan@baruch.cuny.edu</a></div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <script>
-const CANON_DATA = {"Cyprus": {"total": 33202044.0, "restricted": 6250000.0, "unrestricted": 26952044.0}, "Uzbekistan": {"total": 12988790.0, "restricted": 8717919.0, "unrestricted": 4270871.0}, "Belarus": {"total": 299510.0, "restricted": 0, "unrestricted": 299510.0}, "Cura\u00e7ao": {"total": 39763300.85, "restricted": 0, "unrestricted": 39763300.85}, "Eritrea": {"total": 16003.0, "restricted": 0, "unrestricted": 16003.0}, "Lithuania": {"total": 3901960.0, "restricted": 0, "unrestricted": 3901960.0}, "North Macedonia": {"total": 18001.0, "restricted": 0, "unrestricted": 18001.0}, "Panama": {"total": 56756078.0, "restricted": 9681090.74, "unrestricted": 47074987.26}, "Greece": {"total": 128755215.87, "restricted": 4575194.0, "unrestricted": 124180021.87}, "Uganda": {"total": 16801926.29, "restricted": 2742865.9699999997, "unrestricted": 14059060.32}, "Slovenia": {"total": 490740.0, "restricted": 0, "unrestricted": 490740.0}, "Trinidad and Tobago": {"total": 16350061.86, "restricted": 0, "unrestricted": 16350061.86}, "Rwanda": {"total": 74585772.21000001, "restricted": 3861993.21, "unrestricted": 70723779.0}, "Bahamas": {"total": 180042066.98, "restricted": 34067056.9, "unrestricted": 145975010.07999998}, "Monaco": {"total": 154601087.06, "restricted": 61869674.05, "unrestricted": 92731413.00999999}, "St. Kitts and Nevis": {"total": 24635929.0, "restricted": 12693744.0, "unrestricted": 11942185.0}, "Peru": {"total": 112381449.76, "restricted": 12550601.0, "unrestricted": 99830848.76}, "Mexico": {"total": 75472269.0, "restricted": 13082247.0, "unrestricted": 62390022.0}, "Portugal": {"total": 374073308.58000016, "restricted": 68588819.32, "unrestricted": 305484489.26}, "Guernsey": {"total": 464474902.84, "restricted": 369146892.0, "unrestricted": 95328010.84}, "Venezuela": {"total": 15172914.0, "restricted": 420000.0, "unrestricted": 14752914.0}, "Australia": {"total": 954896269.6699998, "restricted": 121758805.72999999, "unrestricted": 833137463.9399999}, "Czech Republic": {"total": 19106413.0, "restricted": 87.0, "unrestricted": 19106326.0}, "Afghanistan": {"total": 29689131.57, "restricted": 10505265.57, "unrestricted": 19183866.0}, "Bolivia": {"total": 4405666.0, "restricted": 3732000.0, "unrestricted": 673666.0}, "Isle of Man": {"total": 9625438.0, "restricted": 3590000.0, "unrestricted": 6035438.0}, "Mongolia": {"total": 2327033.75, "restricted": 336443.75, "unrestricted": 1990590.0}, "Hungary": {"total": 15242810.0, "restricted": 1296193.0, "unrestricted": 13946617.0}, "Malawi": {"total": 18703947.0, "restricted": 12833312.0, "unrestricted": 5870635.0}, "Namibia": {"total": 8131017.0, "restricted": 3652597.0, "unrestricted": 4478420.0}, "Puerto Rico": {"total": 3875479.2199999997, "restricted": 19820.0, "unrestricted": 3855659.2199999997}, "Taiwan": {"total": 533265340.16, "restricted": 74909575.48, "unrestricted": 458355764.67999995}, "British Virgin Islands": {"total": 109607233.0, "restricted": 21341902.0, "unrestricted": 88265331.0}, "Yemen": {"total": 1656871.4, "restricted": 387513.4, "unrestricted": 1269358.0}, "Liberia": {"total": 1343109.0, "restricted": 0, "unrestricted": 1343109.0}, "Israel": {"total": 463871720.24000007, "restricted": 67848846.03, "unrestricted": 396022874.2100001}, "Iceland": {"total": 6480836.0, "restricted": 1210282.0, "unrestricted": 5270554.0}, "Great Britain": {"total": 27746196.0, "restricted": 5270503.0, "unrestricted": 22475693.0}, "Ireland": {"total": 887175524.98, "restricted": 95290527.04999994, "unrestricted": 791884997.93}, "Netherlands": {"total": 909919867.5899998, "restricted": 99769033.64, "unrestricted": 810150833.95}, "Croatia": {"total": 29279984.0, "restricted": 698318.0, "unrestricted": 28581666.0}, "Georgia": {"total": 84321272.0, "restricted": 7319620.0, "unrestricted": 77001652.0}, "Sri Lanka": {"total": 3663491.0, "restricted": 0, "unrestricted": 3663491.0}, "Uruguay": {"total": 6827545.0, "restricted": 0, "unrestricted": 6827545.0}, "Zambia": {"total": 0, "restricted": 2267349.0, "unrestricted": 20990485.29}, "DR Congo": {"total": 347660.0, "restricted": 0, "unrestricted": 347660.0}, "Bosnia and Herzegovina": {"total": 175421.0, "restricted": 0, "unrestricted": 175421.0}, "Malta": {"total": 11077499.11, "restricted": 6251780.11, "unrestricted": 4825719.0}, "Fiji": {"total": 1250000.0, "restricted": 0, "unrestricted": 1250000.0}, "Senegal": {"total": 13145503.0, "restricted": 0, "unrestricted": 13145503.0}, "Pakistan": {"total": 17548227.060000002, "restricted": 5072104.0600000005, "unrestricted": 12476123.0}, "El Salvador": {"total": 5389616.45, "restricted": 0, "unrestricted": 5389616.45}, "Ghana": {"total": 17806371.5, "restricted": 800300.0, "unrestricted": 17006071.5}, "Kenya": {"total": 85678384.19, "restricted": 23780292.0, "unrestricted": 61898092.19}, "Barbados": {"total": 500100.0, "restricted": 500000.0, "unrestricted": 100.0}, "Wales": {"total": 7083448.07, "restricted": 0, "unrestricted": 7083448.07}, "Seychelles": {"total": 1059361.0, "restricted": 1059361.0, "unrestricted": 0}, "Tanzania": {"total": 27083469.3, "restricted": 4897104.0, "unrestricted": 22186365.3}, "Turkey": {"total": 209943339.69, "restricted": 78763144.8, "unrestricted": 131180194.88999999}, "Bahrain": {"total": 106284949.94, "restricted": 6169113.0, "unrestricted": 100115836.94}, "Colombia": {"total": 101135696.53, "restricted": 29012361.46, "unrestricted": 72123335.07}, "Costa Rica": {"total": 29054745.22, "restricted": 1921902.0, "unrestricted": 27132843.22}, "Northern Mariana Islands": {"total": 8032016.0, "restricted": 547176.0, "unrestricted": 7484840.0}, "United Arab Emirates": {"total": 1792228661.3999999, "restricted": 261674179.10000008, "unrestricted": 1530554482.3}, "Gibraltar": {"total": 128375.25, "restricted": 127982.0, "unrestricted": 393.25}, "St. Vincent & Grenadines": {"total": 330000.0, "restricted": 0, "unrestricted": 330000.0}, "Angola": {"total": 9347807.030000001, "restricted": 3718424.0300000003, "unrestricted": 5629383.0}, "Sierra Leone": {"total": 4547544.0, "restricted": 0, "unrestricted": 4547544.0}, "Germany": {"total": 4692443344.54, "restricted": 452345781.71999997, "unrestricted": 4240097562.819999}, "Palestine": {"total": 12178899.0, "restricted": 9043000.0, "unrestricted": 3135899.0}, "French Guiana": {"total": 73137.76, "restricted": 0, "unrestricted": 73137.76}, "Thailand": {"total": 331709436.58000004, "restricted": 67696735.21000001, "unrestricted": 264012701.37}, "Liechtenstein": {"total": 67892762.37, "restricted": 13443482.370000001, "unrestricted": 54449280.0}, "Central African Republic": {"total": 1050061.59, "restricted": 1050061.59, "unrestricted": 0}, "French Polynesia": {"total": 200.0, "restricted": 0, "unrestricted": 200.0}, "Cambodia": {"total": 5954741.08, "restricted": 288732.0, "unrestricted": 5666009.08}, "Vietnam": {"total": 101776807.53999999, "restricted": 18336704.0, "unrestricted": 83440103.53999999}, "Gabon": {"total": 1960641.0, "restricted": 1960641.0, "unrestricted": 0}, "Saudi Arabia": {"total": 4230348029.1739974, "restricted": 1109866916.45, "unrestricted": 3120481112.7239976}, "Brazil": {"total": 556810239.0499994, "restricted": 105448981.93999998, "unrestricted": 451361257.11000013}, "Finland": {"total": 63537653.199999996, "restricted": 5008673.32, "unrestricted": 58528979.879999995}, "Denmark": {"total": 865910320.89, "restricted": 154900517.0, "unrestricted": 711009803.8899999}, "Japan": {"total": 3667630898.84, "restricted": 460535723.24000007, "unrestricted": 3207095175.6}, "Moldova": {"total": 702100.0, "restricted": 0, "unrestricted": 702100.0}, "Egypt": {"total": 179336915.98000002, "restricted": 27519547.98, "unrestricted": 151817368.0}, "Belgium": {"total": 614523526.3399999, "restricted": 68404519.31, "unrestricted": 546119007.03}, "Indonesia": {"total": 480961676.95, "restricted": 120135046.55999999, "unrestricted": 360826630.39}, "Ecuador": {"total": 40158108.0, "restricted": 1125.0, "unrestricted": 40156983.0}, "Lesotho": {"total": 1663171.0, "restricted": 0, "unrestricted": 1663171.0}, "Libya": {"total": 7651142.75, "restricted": 0, "unrestricted": 7651142.75}, "Bermuda": {"total": 1350785996.1499999, "restricted": 130808508.0, "unrestricted": 1219977488.1499999}, "Brunei Darussalam": {"total": 3693182.0, "restricted": 0, "unrestricted": 3693182.0}, "Eswatini": {"total": 20058405.2, "restricted": 387942.0, "unrestricted": 19670463.2}, "Switzerland": {"total": 3752107138.830003, "restricted": 717816840.5400001, "unrestricted": 3034290298.290003}, "Tokelau": {"total": 6000.0, "restricted": 0, "unrestricted": 6000.0}, "Bhutan": {"total": 2581407.0, "restricted": 0, "unrestricted": 2581407.0}, "Ukraine": {"total": 7121534.0, "restricted": 550000.0, "unrestricted": 6571534.0}, "Mali": {"total": 2885758.0, "restricted": 2343557.0, "unrestricted": 542201.0}, "Nauru": {"total": 5051609.0, "restricted": 3884169.0, "unrestricted": 1167440.0}, "Papua New Guinea": {"total": 1965692.32, "restricted": 910094.0, "unrestricted": 1055598.32}, "Spain": {"total": 876895910.68, "restricted": 308797981.16, "unrestricted": 568097929.52}, "Macao": {"total": 444670.85, "restricted": 427890.0, "unrestricted": 16780.85}, "Myanmar": {"total": 13794682.0, "restricted": 2926851.0, "unrestricted": 10867831.0}, "Jersey": {"total": 84048073.0, "restricted": 21987669.0, "unrestricted": 62060404.0}, "Ethiopia": {"total": 8648119.2, "restricted": 97149.47, "unrestricted": 8550969.73}, "Lebanon": {"total": 30772417.86, "restricted": 15235668.86, "unrestricted": 15536749.0}, "Dominican Republic": {"total": 11213139.0, "restricted": 1661498.0, "unrestricted": 9551641.0}, "Northern Ireland": {"total": 962794.4299999999, "restricted": 16775.0, "unrestricted": 946019.4299999999}, "Canada": {"total": 4093965697.3299994, "restricted": 571413937.88, "unrestricted": 3522551759.45}, "Botswana": {"total": 22559787.18, "restricted": 8555236.23, "unrestricted": 14004550.95}, "Cayman Islands": {"total": 144775158.39, "restricted": 27062501.009999998, "unrestricted": 117712657.38}, "Armenia": {"total": 1083911.0, "restricted": 250000.0, "unrestricted": 833911.0}, "C\u00f4te d'Ivoire": {"total": 5010166.0, "restricted": 1680293.0, "unrestricted": 3329873.0}, "Hong Kong": {"total": 1913903167.500001, "restricted": 259964448.97, "unrestricted": 1653938718.5300002}, "Grenada": {"total": 20834295.23, "restricted": 8848349.77, "unrestricted": 11985945.46}, "Nepal": {"total": 576256.0, "restricted": 9980.0, "unrestricted": 566276.0}, "Austria": {"total": 102032462.21000001, "restricted": 14451739.0, "unrestricted": 87580723.21000001}, "United Kingdom": {"total": 2026586648.06, "restricted": 426047591.0, "unrestricted": 1600539057.06}, "Romania": {"total": 5477752.0, "restricted": 860733.0, "unrestricted": 4617019.0}, "Albania": {"total": 9548633.0, "restricted": 9486387.0, "unrestricted": 62246.0}, "Aruba": {"total": 1718302.0, "restricted": 512568.0, "unrestricted": 1205734.0}, "Kosovo": {"total": 6225620.0, "restricted": 6225620.0, "unrestricted": 0}, "Sudan": {"total": 851316.0, "restricted": 851316.0, "unrestricted": 0}, "American Samoa": {"total": 6382377.0, "restricted": 0, "unrestricted": 6382377.0}, "Sweden": {"total": 537671810.9799999, "restricted": 71772741.42, "unrestricted": 465899069.55999994}, "New Zealand": {"total": 70622545.13, "restricted": 8277384.98, "unrestricted": 62345160.15}, "Argentina": {"total": 39919027.09, "restricted": 3737413.0, "unrestricted": 36181614.09}, "China": {"total": 4495956814.799999, "restricted": 894222736.8500001, "unrestricted": 3601734077.9500003}, "Algeria": {"total": 300000.0, "restricted": 0, "unrestricted": 300000.0}, "Norway": {"total": 442760583.6700001, "restricted": 104223109.72, "unrestricted": 338537473.95000005}, "Mozambique": {"total": 10894763.0, "restricted": 1221871.0, "unrestricted": 9672892.0}, "Morocco": {"total": 63036096.0, "restricted": 14902016.0, "unrestricted": 48134080.0}, "Haiti": {"total": 8859153.55, "restricted": 1541843.0, "unrestricted": 7317310.55}, "England": {"total": 4261070768.462997, "restricted": 457412664.70000005, "unrestricted": 3803658103.7629976}, "Marshall Islands": {"total": 1707944.0, "restricted": 404716.0, "unrestricted": 1303228.0}, "Kuwait": {"total": 1598561656.9700007, "restricted": 770761084.6000005, "unrestricted": 827800572.3700002}, "Timor-Leste": {"total": 2699825.0, "restricted": 0, "unrestricted": 2699825.0}, "Tunisia": {"total": 1293701.0, "restricted": 260000.0, "unrestricted": 1033701.0}, "Belize": {"total": 5347378.0, "restricted": 3075378.0, "unrestricted": 2272000.0}, "Bulgaria": {"total": 6398471.0, "restricted": 0, "unrestricted": 6398471.0}, "Nigeria": {"total": 116724760.04999998, "restricted": 32052771.459999997, "unrestricted": 84671988.59}, "Burkina Faso": {"total": 1587303.0, "restricted": 0, "unrestricted": 1587303.0}, "Antigua and Barbuda": {"total": 47843606.0, "restricted": 42858061.0, "unrestricted": 4985545.0}, "Malaysia": {"total": 443908119.02000004, "restricted": 145649784.94, "unrestricted": 298258334.08000004}, "Turks and Caicos": {"total": 964811.42, "restricted": 964811.42, "unrestricted": 0}, "Jamaica": {"total": 5987225.52, "restricted": 0, "unrestricted": 5987225.52}, "Guyana": {"total": 6367927.3, "restricted": 0, "unrestricted": 6367927.3}, "Paraguay": {"total": 2709480.0, "restricted": 0, "unrestricted": 2709480.0}, "Jordan": {"total": 67888944.41, "restricted": 14002032.31, "unrestricted": 53886912.1}, "Chile": {"total": 135135976.35, "restricted": 14912332.629999999, "unrestricted": 120223643.72}, "Luxembourg": {"total": 69988529.73, "restricted": 34984589.0, "unrestricted": 35003940.730000004}, "South Korea": {"total": 1480418182.2499998, "restricted": 277191040.0, "unrestricted": 1203227142.25}, "Syria": {"total": 2605640.71, "restricted": 0, "unrestricted": 2605640.71}, "Christmas Island": {"total": 5904862.0, "restricted": 0, "unrestricted": 5904862.0}, "St. Lucia": {"total": 613960.0, "restricted": 0, "unrestricted": 613960.0}, "Philippines": {"total": 61292468.25, "restricted": 5138864.25, "unrestricted": 56153604.0}, "United Nations": {"total": 64701279.6, "restricted": 19132226.0, "unrestricted": 45569053.6}, "Iran": {"total": 81.0, "restricted": 0, "unrestricted": 81.0}, "Latvia": {"total": 1838445.0, "restricted": 0, "unrestricted": 1838445.0}, "Italy": {"total": 598723893.45, "restricted": 42849314.25, "unrestricted": 555874579.2}, "Micronesia": {"total": 2274739.0, "restricted": 750000.0, "unrestricted": 1524739.0}, "Scotland": {"total": 63152997.8, "restricted": 4610394.9399999995, "unrestricted": 58542602.86}, "France": {"total": 1939349925.520001, "restricted": 342171561.89, "unrestricted": 1597178363.629999}, "Guam": {"total": 1220950.0, "restricted": 428985.0, "unrestricted": 791965.0}, "Qatar": {"total": 7675448019.349999, "restricted": 1717822254.08, "unrestricted": 5957625765.27}, "West Indies": {"total": 3451281.17, "restricted": 0, "unrestricted": 3451281.17}, "Kazakhstan": {"total": 197490259.89999998, "restricted": 31140544.21, "unrestricted": 166349715.69}, "Singapore": {"total": 1655820547.97, "restricted": 318430104.27000004, "unrestricted": 1337390443.7}, "Madagascar": {"total": 5251960.0, "restricted": 0, "unrestricted": 5251960.0}, "British West Indies": {"total": 13581882.0, "restricted": 0, "unrestricted": 13581882.0}, "Guatemala": {"total": 12919403.0, "restricted": 0, "unrestricted": 12919403.0}, "Palau": {"total": 1162374.0, "restricted": 0, "unrestricted": 1162374.0}, "Zimbabwe": {"total": 0, "restricted": 3882133.0, "unrestricted": 3736590.0}, "Andorra": {"total": 6100000.0, "restricted": 4200000.0, "unrestricted": 1900000.0}, "Estonia": {"total": 1298782.0, "restricted": 198782.0, "unrestricted": 1100000.0}, "Poland": {"total": 28709260.369999997, "restricted": 6043983.0, "unrestricted": 22665277.369999997}, "Azerbaijan": {"total": 28346823.0, "restricted": 23053072.0, "unrestricted": 5293751.0}, "Mauritius": {"total": 11226468.0, "restricted": 5772700.0, "unrestricted": 5453768.0}, "South Africa": {"total": 284542258.67, "restricted": 14295971.0, "unrestricted": 270246287.67}, "Tajikistan": {"total": 870819.0, "restricted": 565365.0, "unrestricted": 305454.0}, "Dominica": {"total": 4690136.95, "restricted": 0, "unrestricted": 4690136.95}, "United States (Domestic)": {"total": 97352207.79, "restricted": 30343852.250000007, "unrestricted": 67008355.54}, "Oman": {"total": 274613330.80999994, "restricted": 98644484.13000001, "unrestricted": 175968846.68000004}, "Cameroon": {"total": 2908462.0, "restricted": 0, "unrestricted": 2908462.0}, "Bangladesh": {"total": 28728576.689999998, "restricted": 7647414.0, "unrestricted": 21081162.689999998}, "Russia": {"total": 178082357.0, "restricted": 12124890.0, "unrestricted": 165957467.0}, "Slovakia": {"total": 219.0, "restricted": 198.0, "unrestricted": 21.0}, "Niger": {"total": 255702.0, "restricted": 0, "unrestricted": 255702.0}, "India": {"total": 1226522205.4099998, "restricted": 115355155.08000001, "unrestricted": 1111167050.33}, "Serbia": {"total": 6900407.85, "restricted": 3181198.0, "unrestricted": 3719209.85}, "Iraq": {"total": 53995659.74, "restricted": 196862.74, "unrestricted": 53798797.0}, "Honduras": {"total": 2509165.0, "restricted": 1203992.0, "unrestricted": 1305173.0}};
+const COUNTRY_DATA = [{"country":"QATAR","iso_num":"634","iso3":"QAT","lat":25.35,"lon":51.18,"total":10592093338.810844,"restricted":3256460609.7505383,"unrestricted":7335632729.060307,"n_records":1303,"n_institutions":65},{"country":"UNITED KINGDOM","iso_num":"826","iso3":"GBR","lat":55.38,"lon":-3.44,"total":8263521884.344883,"restricted":1239304746.9432878,"unrestricted":7024217137.401594,"n_records":16951,"n_institutions":214},{"country":"GERMANY","iso_num":"276","iso3":"DEU","lat":51.17,"lon":10.45,"total":6000743007.305796,"restricted":567067622.9716879,"unrestricted":5433675384.334107,"n_records":7929,"n_institutions":163},{"country":"CHINA","iso_num":"156","iso3":"CHN","lat":35.86,"lon":104.2,"total":5732726357.831568,"restricted":1187116057.4302058,"unrestricted":4545610300.401361,"n_records":7940,"n_institutions":253},{"country":"SAUDI ARABIA","iso_num":"682","iso3":"SAU","lat":23.89,"lon":45.08,"total":5206391506.905936,"restricted":1364314385.7134926,"unrestricted":3842077121.192444,"n_records":9048,"n_institutions":256},{"country":"CANADA","iso_num":"124","iso3":"CAN","lat":56.13,"lon":-106.35,"total":5096925672.540793,"restricted":710322276.6672109,"unrestricted":4386603395.873583,"n_records":11887,"n_institutions":216},{"country":"SWITZERLAND","iso_num":"756","iso3":"CHE","lat":46.82,"lon":8.23,"total":4942374586.24836,"restricted":900637426.1824774,"unrestricted":4041737160.065882,"n_records":10628,"n_institutions":158},{"country":"JAPAN","iso_num":"392","iso3":"JPN","lat":36.2,"lon":138.25,"total":4771105422.25032,"restricted":565244201.4505682,"unrestricted":4205861220.799752,"n_records":9428,"n_institutions":183},{"country":"FRANCE","iso_num":"250","iso3":"FRA","lat":46.23,"lon":2.21,"total":2481957572.2421446,"restricted":425354163.91466755,"unrestricted":2056603408.327477,"n_records":6046,"n_institutions":154},{"country":"HONG KONG","iso_num":"344","iso3":"HKG","lat":22.4,"lon":114.11,"total":2378863210.359358,"restricted":318702792.1347205,"unrestricted":2060160418.2246373,"n_records":2936,"n_institutions":104},{"country":"UNITED ARAB EMIRATES","iso_num":"784","iso3":"ARE","lat":23.42,"lon":53.85,"total":2257787441.351677,"restricted":324842941.5987022,"unrestricted":1932944499.7529747,"n_records":1929,"n_institutions":102},{"country":"SINGAPORE","iso_num":"702","iso3":"SGP","lat":1.35,"lon":103.82,"total":2001566928.702934,"restricted":364145229.6272277,"unrestricted":1637421699.0757062,"n_records":2444,"n_institutions":95},{"country":"SOUTH KOREA","iso_num":"410","iso3":"KOR","lat":35.91,"lon":127.77,"total":1819927425.5606174,"restricted":347297511.37799805,"unrestricted":1472629914.1826193,"n_records":5481,"n_institutions":163},{"country":"BERMUDA","iso_num":"060","iso3":"BMU","lat":32.32,"lon":-64.76,"total":1648663321.0018137,"restricted":158257580.4701699,"unrestricted":1490405740.5316439,"n_records":743,"n_institutions":56},{"country":"KUWAIT","iso_num":"414","iso3":"KWT","lat":29.31,"lon":47.48,"total":1608438768.2586927,"restricted":607655242.8712294,"unrestricted":1000783525.3874633,"n_records":2001,"n_institutions":122},{"country":"INDIA","iso_num":"356","iso3":"IND","lat":20.59,"lon":78.96,"total":1579720845.5608704,"restricted":187684237.55139172,"unrestricted":1392036608.0094786,"n_records":2315,"n_institutions":125},{"country":"AUSTRALIA","iso_num":"036","iso3":"AUS","lat":-25.27,"lon":133.78,"total":1181713462.8359256,"restricted":150144492.6633079,"unrestricted":1031568970.1726177,"n_records":2046,"n_institutions":118},{"country":"NETHERLANDS","iso_num":"528","iso3":"NLD","lat":52.13,"lon":5.29,"total":1170915777.5436153,"restricted":122869547.59591255,"unrestricted":1048046229.9477028,"n_records":2137,"n_institutions":136},{"country":"SPAIN","iso_num":"724","iso3":"ESP","lat":40.46,"lon":-3.75,"total":1160272076.4601321,"restricted":379472942.2581973,"unrestricted":780799134.2019348,"n_records":1208,"n_institutions":84},{"country":"IRELAND","iso_num":"372","iso3":"IRL","lat":53.14,"lon":-7.69,"total":1144360034.7449908,"restricted":136970709.66148457,"unrestricted":1007389325.0835062,"n_records":2074,"n_institutions":99},{"country":"DENMARK","iso_num":"208","iso3":"DNK","lat":56.26,"lon":9.5,"total":1055750909.7351425,"restricted":190613795.6286219,"unrestricted":865137114.1065205,"n_records":2901,"n_institutions":115},{"country":"ITALY","iso_num":"380","iso3":"ITA","lat":41.87,"lon":12.57,"total":747321799.3232588,"restricted":54368088.57744375,"unrestricted":692953710.745815,"n_records":1405,"n_institutions":104},{"country":"BRAZIL","iso_num":"076","iso3":"BRA","lat":-14.24,"lon":-51.93,"total":736512323.4227355,"restricted":130195403.50205936,"unrestricted":606316919.9206761,"n_records":1571,"n_institutions":92},{"country":"BELGIUM","iso_num":"056","iso3":"BEL","lat":50.5,"lon":4.47,"total":735220884.497263,"restricted":87822103.95824575,"unrestricted":647398780.5390172,"n_records":1645,"n_institutions":108},{"country":"TAIWAN","iso_num":"158","iso3":"TWN","lat":23.7,"lon":120.96,"total":712227257.6717327,"restricted":108736426.42522079,"unrestricted":603490831.2465119,"n_records":1708,"n_institutions":82},{"country":"SWEDEN","iso_num":"752","iso3":"SWE","lat":60.13,"lon":18.64,"total":690945150.8767322,"restricted":94713072.89208764,"unrestricted":596232077.9846447,"n_records":1222,"n_institutions":99},{"country":"INDONESIA","iso_num":"360","iso3":"IDN","lat":-0.79,"lon":113.92,"total":653414141.2121545,"restricted":169989076.09325695,"unrestricted":483425065.11889756,"n_records":1189,"n_institutions":66},{"country":"ISRAEL","iso_num":"376","iso3":"ISR","lat":31.05,"lon":34.85,"total":582211478.3539137,"restricted":83059760.33478794,"unrestricted":499151718.0191257,"n_records":1517,"n_institutions":101},{"country":"NORWAY","iso_num":"578","iso3":"NOR","lat":60.47,"lon":8.47,"total":579079321.9738035,"restricted":138073819.47451136,"unrestricted":441005502.49929214,"n_records":902,"n_institutions":75},{"country":"MALAYSIA","iso_num":"458","iso3":"MYS","lat":4.21,"lon":101.98,"total":564954302.2122014,"restricted":196421846.7612943,"unrestricted":368532455.45090705,"n_records":692,"n_institutions":62},{"country":"GUERNSEY","iso_num":"831","iso3":"GGY","lat":49.46,"lon":-2.59,"total":527023889.0394536,"restricted":418880940.8880434,"unrestricted":108142948.15141022,"n_records":37,"n_institutions":5},{"country":"PORTUGAL","iso_num":"620","iso3":"PRT","lat":39.4,"lon":-8.22,"total":461488563.52597237,"restricted":75917448.73613423,"unrestricted":385571114.78983814,"n_records":178,"n_institutions":24},{"country":"MEXICO","iso_num":"484","iso3":"MEX","lat":23.63,"lon":-102.55,"total":457358110.8171867,"restricted":41420853.77052948,"unrestricted":415937257.0466572,"n_records":1327,"n_institutions":81},{"country":"THAILAND","iso_num":"764","iso3":"THA","lat":15.87,"lon":100.99,"total":420536344.1558481,"restricted":91222164.8365669,"unrestricted":329314179.3192812,"n_records":902,"n_institutions":54},{"country":"SOUTH AFRICA","iso_num":"710","iso3":"ZAF","lat":-30.56,"lon":22.94,"total":365904658.0249901,"restricted":20361479.886145964,"unrestricted":345543178.13884413,"n_records":479,"n_institutions":49},{"country":"OMAN","iso_num":"512","iso3":"OMN","lat":21.51,"lon":55.92,"total":333735606.87348044,"restricted":115384021.59351227,"unrestricted":218351585.27996817,"n_records":916,"n_institutions":64},{"country":"TURKEY","iso_num":"792","iso3":"TUR","lat":38.96,"lon":35.24,"total":255077077.49770302,"restricted":87328298.14091678,"unrestricted":167748779.35678625,"n_records":460,"n_institutions":55},{"country":"KAZAKHSTAN","iso_num":"398","iso3":"KAZ","lat":48.02,"lon":66.92,"total":247034318.40582404,"restricted":39823163.869056225,"unrestricted":207211154.5367678,"n_records":512,"n_institutions":29},{"country":"RUSSIA","iso_num":"643","iso3":"RUS","lat":61.52,"lon":105.32,"total":232519327.91562775,"restricted":15426292.557796305,"unrestricted":217093035.35783145,"n_records":134,"n_institutions":34},{"country":"BAHAMAS","iso_num":"044","iso3":"BHS","lat":25.03,"lon":-77.4,"total":220458119.3012665,"restricted":42586378.44760389,"unrestricted":177871740.8536626,"n_records":343,"n_institutions":68},{"country":"EGYPT","iso_num":"818","iso3":"EGY","lat":26.82,"lon":30.8,"total":219193764.2466328,"restricted":30715143.664790723,"unrestricted":188478620.5818421,"n_records":164,"n_institutions":36},{"country":"MONACO","iso_num":"492","iso3":"MCO","lat":43.75,"lon":7.41,"total":187440045.08292124,"restricted":74109867.06463169,"unrestricted":113330178.01828955,"n_records":110,"n_institutions":10},{"country":"CAYMAN ISLANDS","iso_num":"136","iso3":"CYM","lat":19.32,"lon":-81.25,"total":180752097.54416403,"restricted":30458576.518793758,"unrestricted":150293521.02537027,"n_records":198,"n_institutions":42},{"country":"GREECE","iso_num":"300","iso3":"GRC","lat":39.07,"lon":21.82,"total":173974973.30658278,"restricted":4982230.6090172315,"unrestricted":168992742.69756556,"n_records":220,"n_institutions":28},{"country":"CHILE","iso_num":"152","iso3":"CHL","lat":-35.68,"lon":-71.54,"total":169487486.58434772,"restricted":17145918.736186955,"unrestricted":152341567.84816077,"n_records":350,"n_institutions":38},{"country":"NIGERIA","iso_num":"566","iso3":"NGA","lat":9.08,"lon":8.68,"total":148530447.0740422,"restricted":38640170.51122655,"unrestricted":109890276.56281565,"n_records":564,"n_institutions":41},{"country":"BAHRAIN","iso_num":"048","iso3":"BHR","lat":25.93,"lon":50.64,"total":138545986.36287886,"restricted":6619203.716697326,"unrestricted":131926782.64618154,"n_records":83,"n_institutions":18},{"country":"PERU","iso_num":"604","iso3":"PER","lat":-9.19,"lon":-75.02,"total":133817240.57982832,"restricted":21488031.12914339,"unrestricted":112329209.45068493,"n_records":224,"n_institutions":32},{"country":"UNITED STATES","iso_num":"840","iso3":"USA","lat":37.09,"lon":-95.71,"total":131175298.70525756,"restricted":49785191.64892098,"unrestricted":81390107.05633658,"n_records":297,"n_institutions":40},{"country":"COLOMBIA","iso_num":"170","iso3":"COL","lat":4.57,"lon":-74.3,"total":129496901.78438741,"restricted":39406729.663074255,"unrestricted":90090172.12131315,"n_records":434,"n_institutions":39},{"country":"VIRGIN ISLANDS (BRITISH)","iso_num":"092","iso3":"VGB","lat":18.42,"lon":-64.64,"total":128488621.06722511,"restricted":25237895.597079027,"unrestricted":103250725.47014609,"n_records":98,"n_institutions":28},{"country":"AUSTRIA","iso_num":"040","iso3":"AUT","lat":47.52,"lon":14.55,"total":126973160.23081478,"restricted":18385856.61739589,"unrestricted":108587303.61341889,"n_records":416,"n_institutions":72},{"country":"VIETNAM","iso_num":"704","iso3":"VNM","lat":14.06,"lon":108.28,"total":124846238.42131922,"restricted":19694030.72748028,"unrestricted":105152207.69383894,"n_records":154,"n_institutions":28},{"country":"KENYA","iso_num":"404","iso3":"KEN","lat":-0.02,"lon":37.91,"total":107061533.70960607,"restricted":26536587.615758862,"unrestricted":80524946.0938472,"n_records":214,"n_institutions":29},{"country":"GEORGIA","iso_num":"268","iso3":"GEO","lat":42.32,"lon":43.36,"total":103924452.7252298,"restricted":7783636.283046541,"unrestricted":96140816.44218326,"n_records":85,"n_institutions":14},{"country":"JERSEY","iso_num":"832","iso3":"JEY","lat":49.21,"lon":-2.13,"total":96423497.72682948,"restricted":22414216.636126656,"unrestricted":74009281.09070283,"n_records":66,"n_institutions":12},{"country":"LUXEMBOURG","iso_num":"442","iso3":"LUX","lat":49.82,"lon":6.13,"total":87920413.3216995,"restricted":45139235.55576758,"unrestricted":42781177.76593192,"n_records":127,"n_institutions":31},{"country":"LIECHTENSTEIN","iso_num":"438","iso3":"LIE","lat":47.17,"lon":9.56,"total":86655024.50664921,"restricted":16342245.184872277,"unrestricted":70312779.32177693,"n_records":106,"n_institutions":21},{"country":"FINLAND","iso_num":"246","iso3":"FIN","lat":61.92,"lon":25.75,"total":86078533.1590415,"restricted":6118025.143918133,"unrestricted":79960508.01512337,"n_records":220,"n_institutions":42},{"country":"RWANDA","iso_num":"646","iso3":"RWA","lat":-1.94,"lon":29.87,"total":85768023.71647641,"restricted":4399133.336966461,"unrestricted":81368890.37950996,"n_records":68,"n_institutions":16},{"country":"NEW ZEALAND","iso_num":"554","iso3":"NZL","lat":-40.9,"lon":174.89,"total":83887043.58886188,"restricted":11911069.604019515,"unrestricted":71975973.98484236,"n_records":210,"n_institutions":56},{"country":"MOROCCO","iso_num":"504","iso3":"MAR","lat":31.79,"lon":-7.09,"total":83457329.7897928,"restricted":24635483.390139643,"unrestricted":58821846.39965317,"n_records":53,"n_institutions":11},{"country":"JORDAN","iso_num":"400","iso3":"JOR","lat":30.59,"lon":36.24,"total":82174723.66001283,"restricted":16261408.844041191,"unrestricted":65913314.815971635,"n_records":114,"n_institutions":20},{"country":"PHILIPPINES","iso_num":"608","iso3":"PHL","lat":12.88,"lon":121.77,"total":79117302.47894232,"restricted":5625293.565339172,"unrestricted":73492008.91360314,"n_records":132,"n_institutions":29},{"country":"IRAQ","iso_num":"368","iso3":"IRQ","lat":33.22,"lon":43.68,"total":69024239.7975439,"restricted":236985.2198494295,"unrestricted":68787254.57769448,"n_records":47,"n_institutions":14},{"country":"PANAMA","iso_num":"591","iso3":"PAN","lat":8.54,"lon":-80.78,"total":68317246.14797123,"restricted":12030930.042850897,"unrestricted":56286316.10512033,"n_records":172,"n_institutions":34},{"country":"CYPRUS","iso_num":"196","iso3":"CYP","lat":35.13,"lon":33.43,"total":65288444.114142254,"restricted":8126206.188450344,"unrestricted":57162237.92569191,"n_records":29,"n_institutions":4},{"country":"ARGENTINA","iso_num":"032","iso3":"ARG","lat":-38.42,"lon":-63.62,"total":63798647.31633426,"restricted":4621108.597165323,"unrestricted":59177538.71916894,"n_records":137,"n_institutions":18},{"country":"ANTIGUA AND BARBUDA","iso_num":"028","iso3":"ATG","lat":17.06,"lon":-61.8,"total":63321551.072080985,"restricted":57522219.72681226,"unrestricted":5799331.345268726,"n_records":25,"n_institutions":2},{"country":"ECUADOR","iso_num":"218","iso3":"ECU","lat":-1.83,"lon":-78.18,"total":52279377.80389962,"restricted":167271.81947882744,"unrestricted":52112105.9844208,"n_records":26,"n_institutions":9},{"country":"CURACAO","iso_num":"531","iso3":"CUW","lat":12.17,"lon":-68.99,"total":47891115.76828461,"restricted":0.0,"unrestricted":47891115.76828461,"n_records":18,"n_institutions":5},{"country":"BANGLADESH","iso_num":"050","iso3":"BGD","lat":23.68,"lon":90.36,"total":41794629.71029999,"restricted":8300137.40612732,"unrestricted":33494492.304172672,"n_records":74,"n_institutions":11},{"country":"LEBANON","iso_num":"422","iso3":"LBN","lat":33.85,"lon":35.86,"total":39924741.965645686,"restricted":17514040.731478736,"unrestricted":22410701.23416695,"n_records":61,"n_institutions":15},{"country":"AFGHANISTAN","iso_num":"004","iso3":"AFG","lat":33.93,"lon":67.71,"total":39458363.25710945,"restricted":13078783.193817237,"unrestricted":26379580.063292213,"n_records":36,"n_institutions":6},{"country":"AZERBAIJAN","iso_num":"031","iso3":"AZE","lat":40.14,"lon":47.58,"total":37124954.749529265,"restricted":27273065.198215432,"unrestricted":9851889.551313832,"n_records":54,"n_institutions":11},{"country":"CROATIA","iso_num":"191","iso3":"HRV","lat":45.1,"lon":15.2,"total":36779409.60143038,"restricted":698723.4502931596,"unrestricted":36080686.15113722,"n_records":29,"n_institutions":7},{"country":"COSTA RICA","iso_num":"188","iso3":"CRI","lat":9.75,"lon":-83.75,"total":36389140.08982437,"restricted":2104557.359724433,"unrestricted":34284582.73009994,"n_records":98,"n_institutions":14},{"country":"TANZANIA","iso_num":"834","iso3":"TZA","lat":-6.37,"lon":34.89,"total":34044330.548968345,"restricted":6374067.056128734,"unrestricted":27670263.492839612,"n_records":57,"n_institutions":15},{"country":"POLAND","iso_num":"616","iso3":"POL","lat":51.92,"lon":19.15,"total":33268421.937900055,"restricted":7214194.311349054,"unrestricted":26054227.626551002,"n_records":188,"n_institutions":23},{"country":"GRENADA","iso_num":"308","iso3":"GRD","lat":12.26,"lon":-61.6,"total":31987479.080121644,"restricted":12341711.918345194,"unrestricted":19645767.16177645,"n_records":87,"n_institutions":11},{"country":"SAINT KITTS AND NEVIS","iso_num":"659","iso3":"KNA","lat":17.36,"lon":-62.78,"total":30681506.289341357,"restricted":14486988.874558218,"unrestricted":16194517.414783139,"n_records":85,"n_institutions":10},{"country":"ZAMBIA","iso_num":"894","iso3":"ZMB","lat":-13.13,"lon":27.85,"total":28517829.20402295,"restricted":2308542.4921389227,"unrestricted":26209286.71188403,"n_records":198,"n_institutions":9},{"country":"TRINIDAD AND TOBAGO","iso_num":"780","iso3":"TTO","lat":10.69,"lon":-61.22,"total":27693429.722973585,"restricted":0.0,"unrestricted":27693429.722973585,"n_records":41,"n_institutions":8},{"country":"GHANA","iso_num":"288","iso3":"GHA","lat":7.95,"lon":-1.02,"total":27480981.29649384,"restricted":1089634.509952443,"unrestricted":26391346.786541395,"n_records":85,"n_institutions":23},{"country":"MALAWI","iso_num":"454","iso3":"MWI","lat":-13.25,"lon":34.3,"total":25797308.670913126,"restricted":15131297.974277211,"unrestricted":10666010.696635915,"n_records":24,"n_institutions":7},{"country":"BOTSWANA","iso_num":"072","iso3":"BWA","lat":-22.33,"lon":24.68,"total":25193562.85792463,"restricted":10846309.840561708,"unrestricted":14347253.01736292,"n_records":38,"n_institutions":13},{"country":"ESWATINI","iso_num":"748","iso3":"SWZ","lat":-26.52,"lon":31.47,"total":24834481.756928094,"restricted":689678.2590930793,"unrestricted":24144803.497835014,"n_records":18,"n_institutions":12},{"country":"CZECHIA","iso_num":"203","iso3":"CZE","lat":49.82,"lon":15.47,"total":24136203.40174391,"restricted":85.20332247557003,"unrestricted":24136118.198421437,"n_records":41,"n_institutions":21},{"country":"HUNGARY","iso_num":"348","iso3":"HUN","lat":47.16,"lon":19.5,"total":22470336.42019339,"restricted":1580046.1817796421,"unrestricted":20890290.238413747,"n_records":57,"n_institutions":16},{"country":"PAKISTAN","iso_num":"586","iso3":"PAK","lat":30.38,"lon":69.35,"total":22313671.459473126,"restricted":5780488.231447998,"unrestricted":16533183.228025127,"n_records":88,"n_institutions":18},{"country":"VENEZUELA","iso_num":"862","iso3":"VEN","lat":6.42,"lon":-66.59,"total":21701932.248598646,"restricted":739491.9662001582,"unrestricted":20962440.28239849,"n_records":50,"n_institutions":13},{"country":"UGANDA","iso_num":"800","iso3":"UGA","lat":1.37,"lon":32.29,"total":21244254.265225872,"restricted":3632091.1419139444,"unrestricted":17612163.12331193,"n_records":66,"n_institutions":15},{"country":"MALTA","iso_num":"470","iso3":"MLT","lat":35.94,"lon":14.38,"total":20956106.334161475,"restricted":7946037.384600135,"unrestricted":13010068.94956134,"n_records":48,"n_institutions":7},{"country":"UZBEKISTAN","iso_num":"860","iso3":"UZB","lat":41.38,"lon":64.59,"total":17730743.615229968,"restricted":11882045.471919736,"unrestricted":5848698.143310232,"n_records":26,"n_institutions":8},{"country":"MYANMAR","iso_num":"104","iso3":"MMR","lat":21.91,"lon":95.96,"total":17094640.378930867,"restricted":3751103.1442587217,"unrestricted":13343537.234672144,"n_records":21,"n_institutions":3},{"country":"SENEGAL","iso_num":"686","iso3":"SEN","lat":14.5,"lon":-14.45,"total":16857683.785333693,"restricted":0.0,"unrestricted":16857683.785333693,"n_records":38,"n_institutions":6},{"country":"GUATEMALA","iso_num":"320","iso3":"GTM","lat":15.78,"lon":-90.23,"total":15798805.346491717,"restricted":0.0,"unrestricted":15798805.346491717,"n_records":59,"n_institutions":10},{"country":"DOMINICAN REPUBLIC","iso_num":"214","iso3":"DOM","lat":18.74,"lon":-70.16,"total":15199384.858674936,"restricted":1871434.4345520278,"unrestricted":13327950.424122907,"n_records":34,"n_institutions":11},{"country":"PALESTINIAN TERRITORIES","iso_num":"275","iso3":"PSE","lat":31.95,"lon":35.23,"total":14495290.764612474,"restricted":10747578.15098585,"unrestricted":3747712.6136266235,"n_records":28,"n_institutions":4},{"country":"MOZAMBIQUE","iso_num":"508","iso3":"MOZ","lat":-18.67,"lon":35.53,"total":13183909.450631337,"restricted":1420556.2769745432,"unrestricted":11763353.173656793,"n_records":28,"n_institutions":6},{"country":"ANGOLA","iso_num":"024","iso3":"AGO","lat":-11.2,"lon":17.87,"total":12577890.574999819,"restricted":4924392.216544174,"unrestricted":7653498.358455645,"n_records":31,"n_institutions":9},{"country":"ISLE OF MAN","iso_num":"833","iso3":"IMN","lat":54.24,"lon":-4.55,"total":12058721.014611904,"restricted":4553557.715029678,"unrestricted":7505163.299582225,"n_records":14,"n_institutions":4},{"country":"MAURITIUS","iso_num":"480","iso3":"MUS","lat":-20.35,"lon":57.55,"total":11928822.257943518,"restricted":5926790.580626945,"unrestricted":6002031.677316573,"n_records":9,"n_institutions":6},{"country":"ALBANIA","iso_num":"008","iso3":"ALB","lat":41.15,"lon":20.17,"total":11393088.945684187,"restricted":11318864.381817292,"unrestricted":74224.56386689469,"n_records":7,"n_institutions":4},{"country":"HAITI","iso_num":"332","iso3":"HTI","lat":18.97,"lon":-72.29,"total":11264001.29029465,"restricted":1749284.0799043889,"unrestricted":9514717.21039026,"n_records":46,"n_institutions":7},{"country":"KOSOVO","iso_num":"383","iso3":"XKX","lat":42.6,"lon":20.9,"total":10800158.309147157,"restricted":10800158.309147157,"unrestricted":0.0,"n_records":3,"n_institutions":1},{"country":"NAMIBIA","iso_num":"516","iso3":"NAM","lat":-22.96,"lon":18.49,"total":10759393.549983626,"restricted":4355476.378281907,"unrestricted":6403917.171701719,"n_records":12,"n_institutions":4},{"country":"LIBYA","iso_num":"434","iso3":"LBY","lat":26.34,"lon":17.23,"total":10502093.955107428,"restricted":0.0,"unrestricted":10502093.955107428,"n_records":16,"n_institutions":6},{"country":"ETHIOPIA","iso_num":"231","iso3":"ETH","lat":9.15,"lon":40.49,"total":10134446.655463198,"restricted":117201.5073035872,"unrestricted":10017245.14815961,"n_records":34,"n_institutions":13},{"country":"NORTHERN MARIANA ISL","iso_num":"580","iso3":"MNP","lat":15.1,"lon":145.67,"total":9493813.957512908,"restricted":615526.2481332272,"unrestricted":8878287.70937968,"n_records":11,"n_institutions":2},{"country":"ICELAND","iso_num":"352","iso3":"ISL","lat":64.96,"lon":-19.02,"total":9248694.750807574,"restricted":1390257.0624256367,"unrestricted":7858437.688381937,"n_records":28,"n_institutions":9},{"country":"ZIMBABWE","iso_num":"716","iso3":"ZWE","lat":-19.02,"lon":29.15,"total":9002140.112661134,"restricted":4053519.396838884,"unrestricted":4948620.715822251,"n_records":32,"n_institutions":7},{"country":"UKRAINE","iso_num":"804","iso3":"UKR","lat":48.38,"lon":31.17,"total":8583094.857218742,"restricted":655838.0264932181,"unrestricted":7927256.830725525,"n_records":21,"n_institutions":11},{"country":"SERBIA","iso_num":"688","iso3":"SRB","lat":44.02,"lon":21.01,"total":8177046.404990745,"restricted":3793364.760371223,"unrestricted":4383681.644619522,"n_records":14,"n_institutions":9},{"country":"BULGARIA","iso_num":"100","iso3":"BGR","lat":42.73,"lon":25.49,"total":8132251.628762474,"restricted":318406.7747882736,"unrestricted":7813844.853974201,"n_records":23,"n_institutions":9},{"country":"JAMAICA","iso_num":"388","iso3":"JAM","lat":18.11,"lon":-77.3,"total":8101680.111058283,"restricted":509261.2377850164,"unrestricted":7592418.8732732665,"n_records":33,"n_institutions":9},{"country":"GUYANA","iso_num":"328","iso3":"GUY","lat":4.86,"lon":-58.93,"total":7988644.696883662,"restricted":68.55439739413681,"unrestricted":7988576.142486268,"n_records":17,"n_institutions":4},{"country":"URUGUAY","iso_num":"858","iso3":"URY","lat":-32.52,"lon":-55.77,"total":7878080.856988907,"restricted":0.0,"unrestricted":7878080.856988907,"n_records":24,"n_institutions":6},{"country":"ANDORRA","iso_num":"020","iso3":"AND","lat":42.51,"lon":1.52,"total":7748300.84590753,"restricted":5345319.340647646,"unrestricted":2402981.5052598836,"n_records":7,"n_institutions":2},{"country":"EL SALVADOR","iso_num":"222","iso3":"SLV","lat":13.79,"lon":-88.9,"total":7707402.658814724,"restricted":0.0,"unrestricted":7707402.658814724,"n_records":11,"n_institutions":6},{"country":"ROMANIA","iso_num":"642","iso3":"ROU","lat":45.94,"lon":24.97,"total":7551195.728303434,"restricted":1430734.2264495115,"unrestricted":6120461.501853922,"n_records":22,"n_institutions":5},{"country":"BOLIVIA","iso_num":"068","iso3":"BOL","lat":-16.29,"lon":-63.59,"total":7339875.436963966,"restricted":5375197.28144183,"unrestricted":1964678.155522136,"n_records":11,"n_institutions":5},{"country":"AMERICAN SAMOA","iso_num":"016","iso3":"ASM","lat":-14.27,"lon":-170.13,"total":7262049.481558979,"restricted":0.0,"unrestricted":7262049.481558979,"n_records":13,"n_institutions":2},{"country":"CHRISTMAS ISLAND","iso_num":"162","iso3":"CXR","lat":-10.45,"lon":105.69,"total":7041150.983263267,"restricted":0.0,"unrestricted":7041150.983263267,"n_records":2,"n_institutions":2},{"country":"CAMBODIA","iso_num":"116","iso3":"KHM","lat":12.57,"lon":104.99,"total":7031271.476241956,"restricted":296523.3061893702,"unrestricted":6734748.170052586,"n_records":17,"n_institutions":3},{"country":"BELIZE","iso_num":"084","iso3":"BLZ","lat":17.19,"lon":-88.5,"total":6258623.743281789,"restricted":3660299.209238426,"unrestricted":2598324.5340433633,"n_records":4,"n_institutions":3},{"country":"NAURU","iso_num":"520","iso3":"NRU","lat":-0.52,"lon":166.93,"total":5942947.484558893,"restricted":4556099.562814958,"unrestricted":1386847.921743935,"n_records":10,"n_institutions":3},{"country":"COTE D'IVOIRE","iso_num":"384","iso3":"CIV","lat":7.54,"lon":-5.55,"total":5868976.297159979,"restricted":1894994.1575625383,"unrestricted":3973982.139597441,"n_records":11,"n_institutions":6},{"country":"MADAGASCAR","iso_num":"450","iso3":"MDG","lat":-18.77,"lon":46.87,"total":5637480.444474118,"restricted":0.0,"unrestricted":5637480.444474118,"n_records":8,"n_institutions":2},{"country":"DOMINICA","iso_num":"212","iso3":"DMA","lat":15.41,"lon":-61.37,"total":5517696.734533699,"restricted":440706.8403908795,"unrestricted":5076989.89414282,"n_records":8,"n_institutions":2},{"country":"PARAGUAY","iso_num":"600","iso3":"PRY","lat":-23.44,"lon":-58.44,"total":5212811.577370877,"restricted":2014357.362996743,"unrestricted":3198454.2143741343,"n_records":15,"n_institutions":4},{"country":"LITHUANIA","iso_num":"440","iso3":"LTU","lat":55.17,"lon":23.88,"total":4973925.008743209,"restricted":0.0,"unrestricted":4973925.008743209,"n_records":12,"n_institutions":6},{"country":"BRUNEI","iso_num":"096","iso3":"BRN","lat":4.54,"lon":114.73,"total":4913795.1667669825,"restricted":0.0,"unrestricted":4913795.1667669825,"n_records":2,"n_institutions":1},{"country":"PUERTO RICO","iso_num":"630","iso3":"PRI","lat":18.22,"lon":-66.59,"total":4776120.929346526,"restricted":25916.41552114147,"unrestricted":4750204.513825385,"n_records":56,"n_institutions":7},{"country":"SIERRA LEONE","iso_num":"694","iso3":"SLE","lat":8.46,"lon":-11.78,"total":4547544.0,"restricted":0.0,"unrestricted":4547544.0,"n_records":1,"n_institutions":1},{"country":"SRI LANKA","iso_num":"144","iso3":"LKA","lat":7.87,"lon":80.77,"total":4379172.566315113,"restricted":68.55439739413681,"unrestricted":4379104.011917719,"n_records":39,"n_institutions":4},{"country":"MONGOLIA","iso_num":"496","iso3":"MNG","lat":46.86,"lon":103.85,"total":4261903.948456322,"restricted":1608704.7312561655,"unrestricted":2653199.2172001563,"n_records":11,"n_institutions":7},{"country":"CAMEROON","iso_num":"120","iso3":"CMR","lat":7.37,"lon":12.35,"total":3628002.036497959,"restricted":0.0,"unrestricted":3628002.036497959,"n_records":7,"n_institutions":3},{"country":"MALI","iso_num":"466","iso3":"MLI","lat":17.57,"lon":-3.99,"total":3579478.575838237,"restricted":2878119.1244260585,"unrestricted":701359.4514121786,"n_records":12,"n_institutions":3},{"country":"BHUTAN","iso_num":"064","iso3":"BTN","lat":27.51,"lon":90.43,"total":3545928.1471463325,"restricted":0.0,"unrestricted":3545928.1471463325,"n_records":5,"n_institutions":2},{"country":"SYRIA","iso_num":"760","iso3":"SYR","lat":34.8,"lon":38.99,"total":3397229.2841960387,"restricted":0.0,"unrestricted":3397229.2841960387,"n_records":5,"n_institutions":2},{"country":"HONDURAS","iso_num":"340","iso3":"HND","lat":15.2,"lon":-86.24,"total":3066665.1563558914,"restricted":1462034.018597041,"unrestricted":1604631.1377588504,"n_records":7,"n_institutions":4},{"country":"PAPUA NEW GUINEA","iso_num":"598","iso3":"PNG","lat":-6.31,"lon":143.96,"total":2930618.2912708432,"restricted":1283015.6723248344,"unrestricted":1647602.6189460088,"n_records":10,"n_institutions":6},{"country":"TIMOR-LESTE","iso_num":"626","iso3":"TLS","lat":-8.87,"lon":125.73,"total":2882152.33809118,"restricted":0.0,"unrestricted":2882152.33809118,"n_records":1,"n_institutions":1},{"country":"GABON","iso_num":"266","iso3":"GAB","lat":-0.8,"lon":11.61,"total":2711021.3019209206,"restricted":2711021.3019209206,"unrestricted":0.0,"n_records":4,"n_institutions":1},{"country":"MICRONESIA","iso_num":"583","iso3":"FSM","lat":7.43,"lon":150.55,"total":2607127.868007249,"restricted":770238.4205492556,"unrestricted":1836889.4474579936,"n_records":5,"n_institutions":4},{"country":"LATVIA","iso_num":"428","iso3":"LVA","lat":56.88,"lon":24.6,"total":2291627.8779927366,"restricted":0.0,"unrestricted":2291627.8779927366,"n_records":6,"n_institutions":4},{"country":"MARSHALL ISLANDS","iso_num":"584","iso3":"MHL","lat":7.13,"lon":171.18,"total":2104856.1149864397,"restricted":482992.3854692462,"unrestricted":1621863.7295171935,"n_records":4,"n_institutions":2},{"country":"YEMEN","iso_num":"887","iso3":"YEM","lat":15.55,"lon":48.52,"total":2063441.9196477383,"restricted":486595.6305277135,"unrestricted":1576846.2891200248,"n_records":8,"n_institutions":4},{"country":"LESOTHO","iso_num":"426","iso3":"LSO","lat":-29.61,"lon":28.23,"total":2026215.1137945931,"restricted":0.0,"unrestricted":2026215.1137945931,"n_records":5,"n_institutions":1},{"country":"BURKINA FASO","iso_num":"854","iso3":"BFA","lat":12.24,"lon":-1.56,"total":2000788.0158524197,"restricted":0.0,"unrestricted":2000788.0158524197,"n_records":3,"n_institutions":2},{"country":"ARUBA","iso_num":"533","iso3":"ABW","lat":12.52,"lon":-69.97,"total":1804060.6625339591,"restricted":512568.0,"unrestricted":1291492.6625339591,"n_records":5,"n_institutions":1},{"country":"LIBERIA","iso_num":"430","iso3":"LBR","lat":6.43,"lon":-9.43,"total":1676262.8318957589,"restricted":0.0,"unrestricted":1676262.8318957589,"n_records":3,"n_institutions":3},{"country":"TUNISIA","iso_num":"788","iso3":"TUN","lat":33.89,"lon":9.54,"total":1617397.1274914956,"restricted":267015.9857904086,"unrestricted":1350381.141701087,"n_records":4,"n_institutions":2},{"country":"SAINT LUCIA","iso_num":"662","iso3":"LCA","lat":13.91,"lon":-60.98,"total":1544352.5770698744,"restricted":930381.1074918568,"unrestricted":613971.4695780176,"n_records":4,"n_institutions":3},{"country":"GUAM","iso_num":"316","iso3":"GUM","lat":13.44,"lon":144.79,"total":1436233.8336211927,"restricted":457955.6529612271,"unrestricted":978278.1806599656,"n_records":9,"n_institutions":4},{"country":"CENTRAL AFRICAN REPUBLIC","iso_num":"140","iso3":"CAF","lat":6.61,"lon":20.94,"total":1416000.707074812,"restricted":1416000.707074812,"unrestricted":0.0,"n_records":1,"n_institutions":1},{"country":"FIJI","iso_num":"242","iso3":"FJI","lat":-16.58,"lon":179.41,"total":1411249.848146049,"restricted":0.0,"unrestricted":1411249.848146049,"n_records":3,"n_institutions":2},{"country":"PALAU","iso_num":"585","iso3":"PLW","lat":7.51,"lon":134.58,"total":1400962.8124771188,"restricted":0.0,"unrestricted":1400962.8124771188,"n_records":5,"n_institutions":2},{"country":"ESTONIA","iso_num":"233","iso3":"EST","lat":58.6,"lon":25.01,"total":1371477.5936229653,"restricted":239811.3960356312,"unrestricted":1131666.197587334,"n_records":4,"n_institutions":3},{"country":"TAJIKISTAN","iso_num":"762","iso3":"TJK","lat":38.86,"lon":71.28,"total":1312762.1750208468,"restricted":624998.7818442998,"unrestricted":687763.393176547,"n_records":7,"n_institutions":2},{"country":"ARMENIA","iso_num":"051","iso3":"ARM","lat":40.07,"lon":45.04,"total":1284216.7162520755,"restricted":326974.9434487559,"unrestricted":957241.7728033196,"n_records":8,"n_institutions":4},{"country":"SEYCHELLES","iso_num":"690","iso3":"SYC","lat":-4.68,"lon":55.49,"total":1087947.391241973,"restricted":1087947.391241973,"unrestricted":0.0,"n_records":1,"n_institutions":1},{"country":"TURKS AND CAICOS ISLANDS","iso_num":"796","iso3":"TCA","lat":21.69,"lon":-71.8,"total":1031760.0071882163,"restricted":1031760.0071882163,"unrestricted":0.0,"n_records":4,"n_institutions":2},{"country":"SUDAN","iso_num":"729","iso3":"SDN","lat":12.86,"lon":30.22,"total":973589.4581970333,"restricted":973589.4581970333,"unrestricted":0.0,"n_records":4,"n_institutions":1},{"country":"MOLDOVA","iso_num":"498","iso3":"MDA","lat":47.41,"lon":28.37,"total":749514.9339582446,"restricted":0.0,"unrestricted":749514.9339582446,"n_records":2,"n_institutions":2},{"country":"NEPAL","iso_num":"524","iso3":"NPL","lat":28.39,"lon":84.12,"total":619769.1120186839,"restricted":9980.0,"unrestricted":609789.1120186839,"n_records":6,"n_institutions":3},{"country":"NIGER","iso_num":"562","iso3":"NER","lat":17.61,"lon":8.08,"total":510487.1402390439,"restricted":0.0,"unrestricted":510487.1402390439,"n_records":1,"n_institutions":1},{"country":"MACAO","iso_num":"446","iso3":"MAC","lat":22.2,"lon":113.55,"total":509357.34402209223,"restricted":489347.3084823128,"unrestricted":20010.035539779463,"n_records":2,"n_institutions":2},{"country":"BARBADOS","iso_num":"052","iso3":"BRB","lat":13.19,"lon":-59.54,"total":500125.7570687636,"restricted":500000.0,"unrestricted":125.75706876360346,"n_records":2,"n_institutions":2},{"country":"SLOVENIA","iso_num":"705","iso3":"SVN","lat":46.15,"lon":14.99,"total":490771.45454164495,"restricted":0.0,"unrestricted":490771.45454164495,"n_records":3,"n_institutions":2},{"country":"ST. VINCENT & THE GRENADINES","iso_num":"670","iso3":"VCT","lat":12.98,"lon":-61.29,"total":398113.3135382393,"restricted":0.0,"unrestricted":398113.3135382393,"n_records":1,"n_institutions":1},{"country":"DEMOCRATIC REPUBLIC OF THE CONGO","iso_num":"180","iso3":"COD","lat":-4.04,"lon":21.76,"total":397593.9733739065,"restricted":0.0,"unrestricted":397593.9733739065,"n_records":1,"n_institutions":1},{"country":"ALGERIA","iso_num":"012","iso3":"DZA","lat":28.03,"lon":1.66,"total":377271.2062907813,"restricted":0.0,"unrestricted":377271.2062907813,"n_records":1,"n_institutions":1},{"country":"BELARUS","iso_num":"112","iso3":"BLR","lat":53.71,"lon":27.95,"total":299862.7185513598,"restricted":0.0,"unrestricted":299862.7185513598,"n_records":3,"n_institutions":3},{"country":"BOSNIA AND HERZEGOVINA","iso_num":"070","iso3":"BIH","lat":43.92,"lon":17.68,"total":224513.9827782378,"restricted":0.0,"unrestricted":224513.9827782378,"n_records":4,"n_institutions":1},{"country":"GIBRALTAR","iso_num":"292","iso3":"GIB","lat":36.14,"lon":-5.35,"total":153060.16371621113,"restricted":152609.9314666455,"unrestricted":450.23224956562626,"n_records":3,"n_institutions":3},{"country":"FRENCH GUIANA","iso_num":"254","iso3":"GUF","lat":3.93,"lon":-53.13,"total":87211.86214642659,"restricted":0.0,"unrestricted":87211.86214642659,"n_records":2,"n_institutions":2},{"country":"ERITREA","iso_num":"232","iso3":"ERI","lat":15.18,"lon":39.78,"total":19082.697119138345,"restricted":0.0,"unrestricted":19082.697119138345,"n_records":2,"n_institutions":2},{"country":"NORTH MACEDONIA","iso_num":"807","iso3":"MKD","lat":41.61,"lon":21.75,"total":17629.25296416938,"restricted":0.0,"unrestricted":17629.25296416938,"n_records":1,"n_institutions":1},{"country":"TOKELAU","iso_num":"772","iso3":"TKL","lat":-8.97,"lon":-171.85,"total":7545.424125815627,"restricted":0.0,"unrestricted":7545.424125815627,"n_records":1,"n_institutions":1},{"country":"NORTH KOREA","iso_num":"408","iso3":"PRK","lat":40.34,"lon":127.51,"total":372.1524429967427,"restricted":372.1524429967427,"unrestricted":0.0,"n_records":3,"n_institutions":1},{"country":"FRENCH POLYNESIA","iso_num":"258","iso3":"PYF","lat":-17.68,"lon":-149.41,"total":228.7257512362115,"restricted":0.0,"unrestricted":228.7257512362115,"n_records":1,"n_institutions":1},{"country":"SLOVAKIA","iso_num":"703","iso3":"SVK","lat":48.67,"lon":19.7,"total":221.06242352470576,"restricted":193.911009771987,"unrestricted":27.151413752718753,"n_records":4,"n_institutions":3},{"country":"IRAN","iso_num":"364","iso3":"IRN","lat":32.43,"lon":53.69,"total":102.48284879378555,"restricted":0.0,"unrestricted":102.48284879378555,"n_records":3,"n_institutions":2}];
 
-const CANONICAL_TO_ISO = {
-  'Afghanistan':'004','Albania':'008','Algeria':'012','Angola':'024',
-  'Argentina':'032','Armenia':'051','Australia':'036','Austria':'040',
-  'Azerbaijan':'031','Bangladesh':'050','Belarus':'112','Belgium':'056',
-  'Belize':'084','Bhutan':'064','Bolivia':'068',
-  'Bosnia and Herzegovina':'070','Botswana':'072','Brazil':'076',
-  'Brunei Darussalam':'096','Bulgaria':'100','Burkina Faso':'854',
-  'Cambodia':'116','Cameroon':'120','Canada':'124',
-  'Central African Republic':'140','Chile':'152','China':'156',
-  'Colombia':'170','Costa Rica':'188',"Cote d'Ivoire":'384',
-  "Côte d'Ivoire":'384','Croatia':'191','Cyprus':'196','Czech Republic':'203',
-  'Denmark':'208','Dominican Republic':'214','DR Congo':'180',
-  'Ecuador':'218','Egypt':'818','El Salvador':'222','Eritrea':'232',
-  'Estonia':'233','Ethiopia':'231','Finland':'246','France':'250',
-  'Gabon':'266','Georgia':'268','Germany':'276','Ghana':'288',
-  'Greece':'300','Guatemala':'320','Guyana':'328','Haiti':'332',
-  'Honduras':'340','Hungary':'348','Iceland':'352','India':'356',
-  'Indonesia':'360','Iran':'364','Iraq':'368','Ireland':'372',
-  'Israel':'376','Italy':'380','Japan':'392','Jordan':'400',
-  'Kazakhstan':'398','Kenya':'404','Kuwait':'414','Latvia':'428',
-  'Lebanon':'422','Lesotho':'426','Liberia':'430','Libya':'434',
-  'Lithuania':'440','Luxembourg':'442','Madagascar':'450',
-  'Malawi':'454','Malaysia':'458','Mali':'466','Mexico':'484',
-  'Moldova':'498','Mongolia':'496','Morocco':'504','Mozambique':'508',
-  'Myanmar':'104','Namibia':'516','Nepal':'524','Netherlands':'528',
-  'New Zealand':'554','Niger':'562','Nigeria':'566',
-  'North Macedonia':'807','Norway':'578','Oman':'512','Pakistan':'586',
-  'Palestine':'275','Panama':'591','Papua New Guinea':'598',
-  'Paraguay':'600','Peru':'604','Philippines':'608','Poland':'616',
-  'Portugal':'620','Qatar':'634','Romania':'642','Russia':'643',
-  'Rwanda':'646','Saudi Arabia':'682','Senegal':'686','Serbia':'688',
-  'Sierra Leone':'694','Slovakia':'703','Slovenia':'705',
-  'South Africa':'710','South Korea':'410','Spain':'724',
-  'Sri Lanka':'144','Sudan':'729','Sweden':'752','Switzerland':'756',
-  'Syria':'760','Tajikistan':'762','Tanzania':'834','Thailand':'764',
-  'Timor-Leste':'626','Tunisia':'788','Turkey':'792','Uganda':'800',
-  'Ukraine':'804','United Arab Emirates':'784','United Kingdom':'826',
-  'Uruguay':'858','Uzbekistan':'860','Venezuela':'862','Vietnam':'704',
-  'Yemen':'887','Zambia':'894','Zimbabwe':'716','Eswatini':'748',
-  'Taiwan':'158','Fiji':'242','Jamaica':'388',
-  'Trinidad and Tobago':'780','Malta':'470','Andorra':'020',
-  'Kosovo':'412','Grenada':'308','Lesotho':'426','Palestine':'275',
+// Build lookup by ISO3 (TopoJSON uses ISO numeric, we'll bridge via included iso_num)
+const byIso3 = new Map(COUNTRY_DATA.map(d => [d.iso3, d]));
+const byIsoNum = new Map(COUNTRY_DATA.map(d => [d.iso_num, d]));
+
+const fmt = d3.format("$,.0f");
+const fmtShort = (v) => {
+  if (v >= 1e9) return "$" + (v/1e9).toFixed(v >= 10e9 ? 1 : 2) + "B";
+  if (v >= 1e6) return "$" + (v/1e6).toFixed(v >= 10e6 ? 0 : 1) + "M";
+  if (v >= 1e3) return "$" + (v/1e3).toFixed(0) + "K";
+  return "$" + Math.round(v);
 };
 
-const ISO_TO_CANONICAL = {};
-for (const [c,iso] of Object.entries(CANONICAL_TO_ISO)) ISO_TO_CANONICAL[iso] = c;
+let currentView = "total"; // total | restricted | unrestricted
+const viewLabels = { total: "Total Gifts & Contracts", restricted: "Restricted", unrestricted: "Unrestricted" };
 
-const TERRITORY_COORDS = {
-  'Guernsey':[49.45,-2.59],'Jersey':[49.21,-2.13],'Isle of Man':[54.23,-4.55],
-  'Bermuda':[32.31,-64.75],'Cayman Islands':[19.31,-81.25],
-  'British Virgin Islands':[18.43,-64.62],'American Samoa':[-14.27,-170.13],
-  'Guam':[13.44,144.79],'Northern Mariana Islands':[15.10,145.67],
-  'Puerto Rico':[18.22,-66.59],'Aruba':[12.52,-69.97],'Curaçao':[12.17,-68.99],
-  'England':[52.56,-1.17],'Scotland':[56.49,-4.20],'Wales':[52.13,-3.78],
-  'Northern Ireland':[54.61,-6.69],'Great Britain':[53.00,-1.50],
-  'Monaco':[43.73,7.40],'Liechtenstein':[47.17,9.55],'Gibraltar':[36.13,-5.35],
-  'Nauru':[-0.53,166.92],'Tokelau':[-9.20,-171.84],'Christmas Island':[-10.49,105.63],
-  'Palau':[7.52,134.58],'French Polynesia':[-17.68,-149.41],
-  'French Guiana':[3.93,-53.13],'Macao':[22.17,113.54],'Hong Kong':[22.32,114.17],
-  'Turks and Caicos':[21.69,-71.80],'Marshall Islands':[7.13,171.18],
-  'Micronesia':[7.43,150.55],'St. Kitts and Nevis':[17.36,-62.78],
-  'Antigua and Barbuda':[17.07,-61.80],'Barbados':[13.19,-59.56],
-  'St. Lucia':[13.91,-60.98],'St. Vincent & Grenadines':[13.25,-61.20],
-  'Seychelles':[-4.68,55.49],'Mauritius':[-20.35,57.55],'Singapore':[1.35,103.82],
-  'West Indies':[17.00,-62.00],'British West Indies':[17.00,-62.00],
-  'United Nations':[40.75,-73.97],'United States (Domestic)':[38.00,-97.00],
-  'Dominica':[15.41,-61.37],
-};
+const svg = d3.select("#map");
+const mapWrap = document.querySelector(".map-wrap");
 
-function buildDataIndex() {
-  const idx = {};
-  for (const [canonical, vals] of Object.entries(CANON_DATA)) {
-    const iso = CANONICAL_TO_ISO[canonical];
-    if (!iso) continue;
-    if (!idx[iso]) idx[iso] = {total:0,restricted:0,unrestricted:0};
-    idx[iso].total        += vals.total        || 0;
-    idx[iso].restricted   += vals.restricted   || 0;
-    idx[iso].unrestricted += vals.unrestricted || 0;
-  }
-  return idx;
-}
-const dataIndex = buildDataIndex();
-let currentMode = 'total';
-
-function fmt(v) {
-  if (!v || v===0) return '$0';
-  if (v>=1e9) return '$'+(v/1e9).toFixed(2)+'B';
-  if (v>=1e6) return '$'+(v/1e6).toFixed(1)+'M';
-  if (v>=1e3) return '$'+(v/1e3).toFixed(0)+'K';
-  return '$'+v.toFixed(0);
+function getSize() {
+  const r = mapWrap.getBoundingClientRect();
+  return { w: r.width, h: r.height };
 }
 
-function getColorScale(mode) {
-  const values = Object.values(dataIndex).map(d=>d[mode]).filter(v=>v>0);
-  const maxVal = d3.quantile(values.sort(d3.ascending), 0.97);
-  const colorScale = d3.scaleSequentialLog(d3.interpolate('#c8e4ff','#002d72')).domain([Math.max(1,d3.min(values)),maxVal]);
-  return {colorScale,maxVal};
-}
+let { w: W, h: H } = getSize();
+svg.attr("viewBox", `0 0 ${W} ${H}`);
 
-function updateLegend(mode, colorScale, maxVal) {
-  const titles = {total:'Total Gifts &amp; Contracts',restricted:'Restricted Gifts &amp; Contracts',unrestricted:'Unrestricted Gifts &amp; Contracts'};
-  document.getElementById('legend-title').innerHTML = titles[mode];
-  const canvas = document.getElementById('legendCanvas');
-  const ctx = canvas.getContext('2d');
-  const w = canvas.offsetWidth||180;
-  canvas.width=w; canvas.height=14;
-  for (let i=0;i<w;i++) {
-    const val = Math.exp(Math.log(1)+(i/w)*(Math.log(maxVal)-Math.log(1)));
-    ctx.fillStyle = colorScale(val);
-    ctx.fillRect(i,0,1,14);
-  }
-  document.getElementById('legend-mid').textContent = fmt(maxVal/4);
-  document.getElementById('legend-max').textContent = fmt(maxVal)+'+';
-}
+const projection = d3.geoNaturalEarth1();
+const path = d3.geoPath(projection);
+const g = svg.append("g");
+const gSphere = g.append("g");
+const gCountries = g.append("g");
 
-const svg = d3.select('#map');
-const g   = svg.append('g');
-svg.insert('rect',':first-child').attr('width','100%').attr('height','100%').attr('fill','#cdd8e8');
-
-const projection = d3.geoNaturalEarth1().scale(160).translate([0,0]);
-const path = d3.geoPath().projection(projection);
-let currentK = 1;
-
-const zoom = d3.zoom().scaleExtent([0.5,14]).on('zoom',(event)=>{
-  g.attr('transform',event.transform);
-  currentK = event.transform.k;
-  updateLabels(currentK);
+const zoom = d3.zoom().scaleExtent([1, 12]).on("zoom", (e) => {
+  g.attr("transform", e.transform);
+  gCountries.selectAll(".country").attr("stroke-width", 0.4 / e.transform.k);
 });
 svg.call(zoom);
 
-function centerProjection() {
-  const rect = document.getElementById('map-container').getBoundingClientRect();
-  projection.scale(Math.min(rect.width/6.2,rect.height/3.1)).translate([rect.width/2,rect.height/2]);
-  path.projection(projection);
+document.getElementById("zoomIn").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1.6);
+document.getElementById("zoomOut").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1/1.6);
+document.getElementById("resetView").onclick = () => svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity);
+
+// Color scale: log scale 1e4 to 1e10 (typical funding range)
+function makeScale() {
+  return d3.scaleSequentialLog(d3.interpolateBlues).domain([1e4, 1.5e10]).clamp(true);
+}
+let color = makeScale();
+
+function valueFor(d) {
+  if (!d) return null;
+  return d[currentView];
 }
 
-const tooltip = document.getElementById('tooltip');
-let tooltipPinned = false;
+function fillFor(isoNum) {
+  const rec = byIsoNum.get(String(isoNum).padStart(3, '0'));
+  const v = valueFor(rec);
+  if (v == null || v === 0) return "var(--no-data)";
+  return color(Math.max(v, 1e4));
+}
 
-function buildTooltipHTML(name, data) {
-  if (!data) return '<h3>'+name+'</h3><div class="tooltip-row"><span class="tooltip-label">No data reported</span></div>';
-  let html = '<h3>'+name+'</h3>';
-  [['Total Gifts &amp; Contracts',data.total,currentMode==='total'],
-   ['Restricted',data.restricted,currentMode==='restricted'],
-   ['Unrestricted',data.unrestricted,currentMode==='unrestricted']]
-  .forEach(([label,val,hl])=>{
-    html += '<div class="tooltip-row"><span class="tooltip-label">'+label+'</span><span class="tooltip-value'+(hl?' highlight':'')+'">'+fmt(val)+'</span></div>';
+// Load TopoJSON
+fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
+  .then(r => r.json())
+  .then(world => {
+    const countries = topojson.feature(world, world.objects.countries);
+    projection.fitSize([W, H], countries);
+
+    gSphere.append("path").datum({type:"Sphere"}).attr("class", "sphere").attr("d", path);
+    gSphere.append("path").datum(d3.geoGraticule10()).attr("class", "graticule").attr("d", path);
+
+    gCountries.selectAll(".country")
+      .data(countries.features)
+      .join("path")
+        .attr("class", "country")
+        .attr("d", path)
+        .attr("data-iso", d => String(d.id).padStart(3, '0'))
+        .attr("data-name", d => d.properties.name)
+        .style("fill", d => fillFor(d.id))
+        .on("mouseenter", function(e, d) {
+          const isoNum = String(d.id).padStart(3, '0');
+          const rec = byIsoNum.get(isoNum);
+          showTooltip(e, d.properties.name, rec);
+        })
+        .on("mousemove", function(e) { moveTooltip(e); })
+        .on("mouseleave", function() { hideTooltip(); })
+        .on("click", function(e, d) {
+          const isoNum = String(d.id).padStart(3, '0');
+          const rec = byIsoNum.get(isoNum);
+          selectCountry(d.properties.name, rec, this);
+        });
+
+    updateStats();
+  })
+  .catch(err => {
+    console.error("Failed to load world map:", err);
+    svg.append("text").attr("x", W/2).attr("y", H/2).attr("text-anchor", "middle")
+      .attr("fill", "#999").text("Could not load map data. Check your internet connection.");
   });
-  return html;
-}
 
-function showTooltip(event,name,isoId) {
-  if (tooltipPinned) return;
-  tooltip.innerHTML = buildTooltipHTML(name, dataIndex[isoId]);
-  tooltip.style.opacity = '1';
-  positionTooltip(event);
-}
-
-function positionTooltip(event) {
-  const c = document.getElementById('map-container').getBoundingClientRect();
-  const x = event.clientX-c.left+14, y = event.clientY-c.top-10;
-  const tw = tooltip.offsetWidth+28, th = tooltip.offsetHeight+20;
-  tooltip.style.left = (x+tw>c.width?x-tw:x)+'px';
-  tooltip.style.top  = (y+th>c.height?y-th+10:y)+'px';
-}
-
-function showPinnedTooltip(name,isoId,screenX,screenY) {
-  const data = dataIndex[isoId] || CANON_DATA[name];
-  tooltip.innerHTML = buildTooltipHTML(name, data);
-  tooltip.style.opacity = '1';
-  tooltipPinned = true;
-  const rect = document.getElementById('map-container').getBoundingClientRect();
-  const x = screenX??rect.width/2, y = screenY??rect.height/2;
-  const tw = tooltip.offsetWidth+28, th = tooltip.offsetHeight+20;
-  tooltip.style.left = (x+tw>rect.width?x-tw+14:x+14)+'px';
-  tooltip.style.top  = (y+th>rect.height?y-th+10:y-10)+'px';
-}
-
-function hideTooltip() { if (tooltipPinned) return; tooltip.style.opacity='0'; }
-function unpinAndHide() { tooltipPinned=false; tooltip.style.opacity='0'; }
-
-const tcCard = document.getElementById('territory-card');
-document.getElementById('tc-close').addEventListener('click',()=>{
-  tcCard.classList.remove('visible');
-  unpinAndHide();
-  if (highlightedIso) {
-    countriesG&&countriesG.selectAll('path').filter(d=>getIsoFromId(d.id)===highlightedIso).classed('country-highlighted',false);
-    highlightedIso=null;
-  }
-  searchInput.value='';
+// View switcher
+d3.selectAll("#viewSeg button").on("click", function() {
+  d3.selectAll("#viewSeg button").classed("active", false);
+  d3.select(this).classed("active", true);
+  currentView = this.dataset.view;
+  document.getElementById("legendTitle").textContent = viewLabels[currentView];
+  document.getElementById("panelMetricLabel").textContent = viewLabels[currentView];
+  gCountries.selectAll(".country").transition().duration(250)
+    .style("fill", d => fillFor(d.id));
+  updateStats();
+  if (selectedRec) renderPanel(selectedName, selectedRec);
 });
 
-function showTerritoryCard(name) {
-  const data = CANON_DATA[name];
-  document.getElementById('tc-name').textContent = name;
-  const ukSubs = ['England','Scotland','Wales','Northern Ireland','Great Britain'];
-  let note = 'Small territory or dependency — not individually rendered on this map.';
-  if (ukSubs.includes(name)) note = 'UK constituent nation — shown here as part of the United Kingdom.';
-  else if (name==='United Nations') note = 'Reported as donor entity, not a geographic country.';
-  else if (name==='United States (Domestic)') note = 'Domestic U.S. sources reported under Section 117.';
-  else if (name==='West Indies'||name==='British West Indies') note = 'Regional designation covering multiple Caribbean territories.';
-  document.getElementById('tc-note').textContent = note;
-  const rows = document.getElementById('tc-rows');
-  rows.innerHTML='';
-  if (data) {
-    [['Total Gifts &amp; Contracts',data.total,currentMode==='total'],
-     ['Restricted',data.restricted,currentMode==='restricted'],
-     ['Unrestricted',data.unrestricted,currentMode==='unrestricted']]
-    .forEach(([label,val,hl])=>{
-      rows.innerHTML += '<div class="tooltip-row"><span class="tooltip-label">'+label+'</span><span class="tooltip-value'+(hl?' highlight':'')+'">'+fmt(val)+'</span></div>';
-    });
+// Tooltip
+const tt = document.getElementById("tooltip");
+function showTooltip(e, name, rec) {
+  const v = valueFor(rec);
+  tt.innerHTML = `<div class="name">${escapeHtml(name)}</div>` +
+    (rec
+      ? `<div class="row val"><span>${viewLabels[currentView]}</span><span>${fmt(v || 0)}</span></div>` +
+        (currentView === "total"
+          ? `<div class="row val"><span>Restricted</span><span>${fmtShort(rec.restricted)}</span></div>` +
+            `<div class="row val"><span>Unrestricted</span><span>${fmtShort(rec.unrestricted)}</span></div>`
+          : "")
+      : `<div class="row" style="color:#aaa">No Section 117 records</div>`);
+  moveTooltip(e);
+  tt.classList.add("show");
+}
+function moveTooltip(e) {
+  const r = mapWrap.getBoundingClientRect();
+  let x = e.clientX - r.left + 14;
+  let y = e.clientY - r.top + 14;
+  const tw = tt.offsetWidth, th = tt.offsetHeight;
+  if (x + tw > r.width) x = e.clientX - r.left - tw - 14;
+  if (y + th > r.height) y = e.clientY - r.top - th - 14;
+  tt.style.left = x + "px";
+  tt.style.top = y + "px";
+}
+function hideTooltip() { tt.classList.remove("show"); }
+
+// Selection panel
+let selectedRec = null, selectedName = null;
+const panel = document.getElementById("panel");
+function selectCountry(name, rec, el) {
+  gCountries.selectAll(".country").classed("selected", false);
+  if (el) d3.select(el).classed("selected", true);
+  selectedRec = rec;
+  selectedName = name;
+  renderPanel(name, rec);
+  panel.classList.add("show");
+}
+function renderPanel(name, rec) {
+  document.getElementById("panelName").textContent = name;
+  document.getElementById("panelMetricLabel").textContent = viewLabels[currentView];
+  if (!rec) {
+    document.getElementById("panelMetricValue").textContent = "No records";
+    document.getElementById("panelRestricted").textContent = "—";
+    document.getElementById("panelUnrestricted").textContent = "—";
+    document.getElementById("panelMeta").innerHTML = "No Section 117 disclosures attributed to this country or territory.";
+    return;
   }
-  tcCard.classList.add('visible');
+  document.getElementById("panelMetricValue").textContent = fmt(valueFor(rec));
+  document.getElementById("panelRestricted").textContent = fmtShort(rec.restricted);
+  document.getElementById("panelUnrestricted").textContent = fmtShort(rec.unrestricted);
+  document.getElementById("panelMeta").innerHTML =
+    `<strong>${rec.n_records.toLocaleString()}</strong> transaction${rec.n_records===1?"":"s"} reported by ` +
+    `<strong>${rec.n_institutions}</strong> institution${rec.n_institutions===1?"":"s"}.`;
 }
-
-const LABEL_TARGET_PX = 10;
-function updateLabels(k) {
-  if (!labelsG) return;
-  labelsG.selectAll('text')
-    .style('display',k>=2.2?null:'none')
-    .attr('font-size',(LABEL_TARGET_PX/k)+'px');
-}
-
-let countriesG, labelsG, highlightedIso=null;
-function getIsoFromId(id) { return String(id).padStart(3,'0'); }
-
-const COUNTRY_LABELS = {
-  '004':'Afghanistan','008':'Albania','012':'Algeria','024':'Angola',
-  '032':'Argentina','051':'Armenia','036':'Australia','040':'Austria',
-  '031':'Azerbaijan','050':'Bangladesh','112':'Belarus','056':'Belgium',
-  '084':'Belize','064':'Bhutan','068':'Bolivia','070':'Bosnia & Herz.',
-  '072':'Botswana','076':'Brazil','096':'Brunei','100':'Bulgaria',
-  '854':'Burkina Faso','116':'Cambodia','120':'Cameroon','124':'Canada',
-  '140':'C.A.R.','152':'Chile','156':'China','170':'Colombia',
-  '188':'Costa Rica',"384":"Côte d'Ivoire",'191':'Croatia','196':'Cyprus',
-  '203':'Czechia','208':'Denmark','214':'Dom. Rep.','180':'DR Congo',
-  '218':'Ecuador','818':'Egypt','222':'El Salvador','232':'Eritrea',
-  '233':'Estonia','231':'Ethiopia','246':'Finland','250':'France',
-  '266':'Gabon','268':'Georgia','276':'Germany','288':'Ghana',
-  '300':'Greece','320':'Guatemala','328':'Guyana','332':'Haiti',
-  '340':'Honduras','348':'Hungary','352':'Iceland','356':'India',
-  '360':'Indonesia','364':'Iran','368':'Iraq','372':'Ireland',
-  '376':'Israel','380':'Italy','392':'Japan','400':'Jordan',
-  '398':'Kazakhstan','404':'Kenya','414':'Kuwait','428':'Latvia',
-  '422':'Lebanon','430':'Liberia','434':'Libya','440':'Lithuania',
-  '442':'Luxembourg','450':'Madagascar','454':'Malawi','458':'Malaysia',
-  '466':'Mali','484':'Mexico','498':'Moldova','496':'Mongolia',
-  '504':'Morocco','508':'Mozambique','104':'Myanmar','516':'Namibia',
-  '524':'Nepal','528':'Netherlands','554':'New Zealand','562':'Niger',
-  '566':'Nigeria','807':'N. Macedonia','578':'Norway','512':'Oman',
-  '586':'Pakistan','591':'Panama','598':'Papua N.G.','600':'Paraguay',
-  '604':'Peru','608':'Philippines','616':'Poland','620':'Portugal',
-  '634':'Qatar','642':'Romania','643':'Russia','646':'Rwanda',
-  '682':'Saudi Arabia','686':'Senegal','688':'Serbia','694':'Sierra Leone',
-  '703':'Slovakia','705':'Slovenia','710':'South Africa','410':'South Korea',
-  '724':'Spain','144':'Sri Lanka','729':'Sudan','752':'Sweden',
-  '756':'Switzerland','760':'Syria','762':'Tajikistan','834':'Tanzania',
-  '764':'Thailand','626':'Timor-Leste','788':'Tunisia','792':'Turkey',
-  '800':'Uganda','804':'Ukraine','784':'UAE','826':'United Kingdom',
-  '858':'Uruguay','860':'Uzbekistan','862':'Venezuela','704':'Vietnam',
-  '887':'Yemen','894':'Zambia','716':'Zimbabwe','748':'Eswatini',
-  '158':'Taiwan','242':'Fiji','388':'Jamaica','780':'Trinidad',
-  '470':'Malta','020':'Andorra','412':'Kosovo','308':'Grenada',
-  '426':'Lesotho','275':'Palestine',
+document.getElementById("panelClose").onclick = () => {
+  panel.classList.remove("show");
+  gCountries.selectAll(".country").classed("selected", false);
+  selectedRec = null; selectedName = null;
 };
 
-fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
-  .then(r=>r.json())
-  .then(world=>{
-    centerProjection();
-    const graticule = d3.geoGraticule();
-    g.append('path').datum(graticule()).attr('class','graticule').attr('d',path);
-    countriesG = g.append('g').attr('class','countries');
-    labelsG    = g.append('g').attr('class','labels');
-    const countries = topojson.feature(world,world.objects.countries).features;
-
-    countriesG.selectAll('path').data(countries).join('path')
-      .attr('class','country').attr('d',path)
-      .on('mousemove',function(event,d){
-        const iso = getIsoFromId(d.id);
-        showTooltip(event, ISO_TO_CANONICAL[iso]||COUNTRY_LABELS[iso]||'Unknown', iso);
-      })
-      .on('mouseout',hideTooltip)
-      .on('click',function(event,d){
-        event.stopPropagation();
-        tcCard.classList.remove('visible');
-        unpinAndHide();
-        const iso  = getIsoFromId(d.id);
-        const name = ISO_TO_CANONICAL[iso]||COUNTRY_LABELS[iso]||'Unknown';
-        if (highlightedIso&&highlightedIso!==iso)
-          countriesG.selectAll('path').filter(x=>getIsoFromId(x.id)===highlightedIso).classed('country-highlighted',false);
-        highlightedIso = iso;
-        countriesG.selectAll('path').filter(x=>getIsoFromId(x.id)===iso).classed('country-highlighted',true).raise();
-        tooltipPinned=false;
-        const rect=document.getElementById('map-container').getBoundingClientRect();
-        showPinnedTooltip(name,iso,event.clientX-rect.left,event.clientY-rect.top);
-        searchInput.value=name;
-      });
-
-    svg.on('click',()=>{
-      unpinAndHide();
-      tcCard.classList.remove('visible');
-      if (highlightedIso){
-        countriesG.selectAll('path').filter(d=>getIsoFromId(d.id)===highlightedIso).classed('country-highlighted',false);
-        highlightedIso=null;
-      }
-    });
-
-    labelsG.selectAll('text').data(countries).join('text')
-      .attr('class','country-label')
-      .attr('transform',d=>{const c=path.centroid(d);return isNaN(c[0])?'translate(-9999,-9999)':'translate('+c+')';})
-      .text(d=>COUNTRY_LABELS[getIsoFromId(d.id)]||'')
-      .style('display','none');
-
-    applyColors(currentMode);
-
-    const [[x0,y0],[x1,y1]] = path.bounds({type:'Sphere'});
-    const rect = document.getElementById('map-container').getBoundingClientRect();
-    svg.call(zoom.transform, d3.zoomIdentity
-      .translate(rect.width/2,rect.height/2)
-      .scale(Math.min(rect.width/(x1-x0),rect.height/(y1-y0))*0.97)
-      .translate(-(x0+x1)/2,-(y0+y1)/2));
-  });
-
-function applyColors(mode) {
-  if (!countriesG) return;
-  const {colorScale,maxVal} = getColorScale(mode);
-  countriesG.selectAll('path').attr('fill',d=>{
-    const iso=getIsoFromId(d.id), data=dataIndex[iso];
-    if (!data||data[mode]===0) return '#d4dbe8';
-    return colorScale(Math.max(1,data[mode]));
-  });
-  updateLegend(mode,colorScale,maxVal);
-  if (tcCard.classList.contains('visible'))
-    showTerritoryCard(document.getElementById('tc-name').textContent);
+// Stats bar
+function updateStats() {
+  const tot = COUNTRY_DATA.reduce((s,d)=>s+d[currentView], 0);
+  const nC = COUNTRY_DATA.filter(d => d[currentView] > 0).length;
+  document.getElementById("stats").innerHTML =
+    `<strong>${fmt(tot)}</strong> in ${viewLabels[currentView].toLowerCase()} from ` +
+    `<strong>${nC}</strong> countries and territories &middot; ` +
+    `<strong>557</strong> U.S. institutions &middot; ` +
+    `<strong>134,257</strong> transactions`;
 }
 
-const SEARCH_ENTRIES = Object.keys(CANON_DATA)
-  .sort((a,b)=>a.localeCompare(b))
-  .map(name=>({label:name,iso:CANONICAL_TO_ISO[name]||null,coords:TERRITORY_COORDS[name]||null,isTerritory:!CANONICAL_TO_ISO[name]}));
+// Search
+const searchInput = document.getElementById("searchInput");
+const searchList = document.getElementById("searchList");
 
-function escapeRegex(s){return s.replace(/[-[\]/{}()*+?.\^$|]/g,'\$&');}
-
-const searchInput = document.getElementById('country-search');
-const dropdown    = document.getElementById('search-dropdown');
-let ddActiveIdx=-1, ddItems=[];
-
-function renderDropdown(query) {
-  dropdown.innerHTML=''; ddItems=[]; ddActiveIdx=-1;
-  if (!query||!query.trim()){dropdown.classList.remove('open');return;}
-  const re=new RegExp(escapeRegex(query.trim()),'i');
-  const matches=SEARCH_ENTRIES.filter(e=>re.test(e.label)).slice(0,12);
-  if (matches.length===0){
-    dropdown.innerHTML='<div class="search-no-results">No matching countries found</div>';
-    dropdown.classList.add('open');return;
-  }
-  matches.forEach(entry=>{
-    const div=document.createElement('div');
-    div.className='search-item';
-    div.innerHTML=entry.label.replace(re,m=>'<em>'+m+'</em>')
-      +(entry.isTerritory?' <span class="tag-territory">Territory</span>':'');
-    div.addEventListener('mousedown',e=>{e.preventDefault();selectCountry(entry);});
-    dropdown.appendChild(div);
-    ddItems.push({el:div,entry});
+// Build search corpus from BOTH data records AND topojson country names (loaded above)
+let allSearchNames = [];
+function rebuildSearch() {
+  const dataNames = COUNTRY_DATA.map(d => ({ name: d.country, iso_num: d.iso_num, rec: d }));
+  const seen = new Set(dataNames.map(d => d.iso_num));
+  const fromMap = [];
+  gCountries.selectAll(".country").each(function(d) {
+    const isoNum = String(d.id).padStart(3, '0');
+    if (!seen.has(isoNum)) {
+      fromMap.push({ name: d.properties.name, iso_num: isoNum, rec: null, el: this });
+    } else {
+      const entry = dataNames.find(x => x.iso_num === isoNum);
+      if (entry) entry.el = this;
+    }
   });
-  dropdown.classList.add('open');
+  allSearchNames = [...dataNames, ...fromMap].sort((a,b) => a.name.localeCompare(b.name));
 }
+// After topo loads
+setTimeout(rebuildSearch, 100);
+setTimeout(rebuildSearch, 500);
+setTimeout(rebuildSearch, 1500);
 
-function setActiveItem(idx){
-  ddItems.forEach(({el})=>el.classList.remove('active-item'));
-  ddActiveIdx=idx;
-  if (idx>=0&&idx<ddItems.length){ddItems[idx].el.classList.add('active-item');ddItems[idx].el.scrollIntoView({block:'nearest'});}
-}
-
-searchInput.addEventListener('input',()=>renderDropdown(searchInput.value));
-searchInput.addEventListener('keydown',e=>{
-  if (!dropdown.classList.contains('open')) return;
-  if (e.key==='ArrowDown'){e.preventDefault();setActiveItem(Math.min(ddActiveIdx+1,ddItems.length-1));}
-  else if (e.key==='ArrowUp'){e.preventDefault();setActiveItem(Math.max(ddActiveIdx-1,0));}
-  else if (e.key==='Enter'){e.preventDefault();if (ddActiveIdx>=0&&ddItems[ddActiveIdx])selectCountry(ddItems[ddActiveIdx].entry);}
-  else if (e.key==='Escape'){dropdown.classList.remove('open');searchInput.blur();}
+let hl = -1;
+searchInput.addEventListener("input", () => {
+  const q = searchInput.value.trim().toLowerCase();
+  if (!q) { searchList.classList.remove("show"); return; }
+  const matches = allSearchNames.filter(d => d.name.toLowerCase().includes(q)).slice(0, 12);
+  searchList.innerHTML = matches.map((m,i) => `<li data-i="${i}">${escapeHtml(toTitleCase(m.name))}</li>`).join("");
+  hl = -1;
+  searchList.classList.toggle("show", matches.length > 0);
+  searchList.querySelectorAll("li").forEach((li, i) => {
+    li.addEventListener("click", () => pickSearch(matches[i]));
+  });
 });
-searchInput.addEventListener('blur',()=>setTimeout(()=>dropdown.classList.remove('open'),150));
-
-function selectCountry(entry) {
-  searchInput.value=entry.label;
-  dropdown.classList.remove('open');
-  tcCard.classList.remove('visible');
-  unpinAndHide();
-  clearHighlight();
-  if (entry.iso) flyToIso(entry.iso,entry.label,entry.coords);
-  else panToTerritory(entry.label,entry.coords);
-}
-
-function clearHighlight() {
-  if (highlightedIso&&countriesG){
-    countriesG.selectAll('path').filter(d=>getIsoFromId(d.id)===highlightedIso).classed('country-highlighted',false);
-    highlightedIso=null;
+searchInput.addEventListener("keydown", (e) => {
+  const items = searchList.querySelectorAll("li");
+  if (e.key === "ArrowDown") { e.preventDefault(); hl = Math.min(items.length-1, hl+1); highlight(items); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); hl = Math.max(0, hl-1); highlight(items); }
+  else if (e.key === "Enter" && items.length) { e.preventDefault();
+    const q = searchInput.value.trim().toLowerCase();
+    const matches = allSearchNames.filter(d => d.name.toLowerCase().includes(q));
+    if (matches.length) pickSearch(matches[hl < 0 ? 0 : hl]);
+  }
+  else if (e.key === "Escape") { searchList.classList.remove("show"); }
+});
+function highlight(items) { items.forEach((li,i) => li.classList.toggle("hl", i===hl)); }
+function pickSearch(m) {
+  searchInput.value = toTitleCase(m.name);
+  searchList.classList.remove("show");
+  // Find the path element
+  let el = null;
+  gCountries.selectAll(".country").each(function(d) {
+    if (String(d.id).padStart(3,'0') === m.iso_num) el = this;
+  });
+  if (el) {
+    // Zoom to the country
+    const d = d3.select(el).datum();
+    const [[x0,y0],[x1,y1]] = path.bounds(d);
+    const cx = (x0+x1)/2, cy = (y0+y1)/2;
+    const k = Math.min(8, 0.85 / Math.max((x1-x0)/W, (y1-y0)/H));
+    svg.transition().duration(600).call(
+      zoom.transform,
+      d3.zoomIdentity.translate(W/2 - cx*k, H/2 - cy*k).scale(k)
+    );
+    selectCountry(toTitleCase(m.name), m.rec, el);
   }
 }
-
-function flyToIso(iso,displayName,fallbackCoords) {
-  if (!countriesG) return;
-  let targetFeature=null;
-  countriesG.selectAll('path').each(function(d){if (getIsoFromId(d.id)===iso) targetFeature=d;});
-  if (!targetFeature){panToTerritory(displayName,fallbackCoords||TERRITORY_COORDS[displayName]);return;}
-  highlightedIso=iso;
-  countriesG.selectAll('path').filter(d=>getIsoFromId(d.id)===iso).classed('country-highlighted',true).raise();
-  const bounds=path.bounds(targetFeature);
-  const bW=bounds[1][0]-bounds[0][0],bH=bounds[1][1]-bounds[0][1];
-  const cx=(bounds[0][0]+bounds[1][0])/2,cy=(bounds[0][1]+bounds[1][1])/2;
-  const rect=document.getElementById('map-container').getBoundingClientRect();
-  const k=Math.min((rect.width-200)/Math.max(bW,1),(rect.height-200)/Math.max(bH,1),12);
-  const t=d3.zoomIdentity.translate(rect.width/2,rect.height/2).scale(k).translate(-cx,-cy);
-  svg.transition().duration(750).call(zoom.transform,t).on('end',()=>{
-    const c=path.centroid(targetFeature);
-    showPinnedTooltip(displayName,iso,t.applyX(c[0]),t.applyY(c[1]));
-  });
-}
-
-function panToTerritory(name,coords) {
-  showTerritoryCard(name);
-  if (!coords||!projection) return;
-  const pt=projection([coords[1],coords[0]]);
-  if (!pt||isNaN(pt[0])) return;
-  const rect=document.getElementById('map-container').getBoundingClientRect();
-  const k=Math.max(currentK,6);
-  svg.transition().duration(750).call(zoom.transform,
-    d3.zoomIdentity.translate(rect.width/2,rect.height/2).scale(k).translate(-pt[0],-pt[1]));
-}
-
-document.querySelectorAll('.toggle-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    currentMode=btn.dataset.mode;
-    applyColors(currentMode);
-  });
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".search")) searchList.classList.remove("show");
 });
 
-document.getElementById('zoomIn').addEventListener('click',()=>svg.transition().duration(300).call(zoom.scaleBy,1.5));
-document.getElementById('zoomOut').addEventListener('click',()=>svg.transition().duration(300).call(zoom.scaleBy,0.67));
-document.getElementById('resetView').addEventListener('click',()=>{
-  if (!countriesG) return;
-  searchInput.value='';
-  clearHighlight();
-  unpinAndHide();
-  tcCard.classList.remove('visible');
-  centerProjection();
-  const rect=document.getElementById('map-container').getBoundingClientRect();
-  const [[x0,y0],[x1,y1]]=path.bounds({type:'Sphere'});
-  svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity
-    .translate(rect.width/2,rect.height/2)
-    .scale(Math.min(rect.width/(x1-x0),rect.height/(y1-y0))*0.97)
-    .translate(-(x0+x1)/2,-(y0+y1)/2));
-  countriesG.selectAll('path').attr('d',path);
-  labelsG.selectAll('text').attr('transform',d=>{const c=path.centroid(d);return isNaN(c[0])?'translate(-9999,-9999)':'translate('+c+')';});
-});
+// Build legend gradient
+(function buildLegend() {
+  const ticks = [1e4, 1e8, 1e9, 1e10];
+  const stops = ticks.map(v => color(v));
+  const grad = document.getElementById("legendGrad");
+  grad.style.background = `linear-gradient(to right, ${color(1e4)}, ${color(1e6)}, ${color(1e8)}, ${color(1e9)}, ${color(1.5e10)})`;
+  document.getElementById("legendTicks").innerHTML =
+    `<span>&lt;$10K</span><span>$1M</span><span>$100M</span><span>$1B</span><span>$10B+</span>`;
+})();
 
-window.addEventListener('resize',()=>{
-  if (!countriesG) return;
-  centerProjection();
-  countriesG.selectAll('path').attr('d',path);
-  labelsG.selectAll('text').attr('transform',d=>{const c=path.centroid(d);return isNaN(c[0])?'translate(-9999,-9999)':'translate('+c+')';});
+function toTitleCase(s) {
+  if (!s) return s;
+  return s.split(/\s+/).map(w => {
+    if (w.length <= 2) return w;
+    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  }).join(" ");
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[m]);
+}
+
+// Responsive resize
+window.addEventListener("resize", () => {
+  const { w, h } = getSize();
+  W = w; H = h;
+  svg.attr("viewBox", `0 0 ${W} ${H}`);
 });
 </script>
 </body>
