@@ -227,11 +227,11 @@ const gCountries = g.append("g");
 const gFlows = g.append("g");
 const gDots = g.append("g");
 
-const zoom = d3.zoom().scaleExtent([1, 12]).on("zoom", (e) => {
+const zoom = d3.zoom().scaleExtent([1, 50]).on("zoom", (e) => {
   g.attr("transform", e.transform);
   gCountries.selectAll(".country").attr("stroke-width", 0.4 / e.transform.k);
-  gDots.selectAll(".inst-dot").attr("r", function() { return (this.classList.contains("selected") ? 4.5 : 2.2) / Math.sqrt(e.transform.k); });
-  gDots.selectAll(".country-dot").attr("r", function() { return +this.dataset.baseR / Math.sqrt(e.transform.k); });
+  gDots.selectAll(".inst-dot").attr("r", function() { return (this.classList.contains("selected") ? 5 : 2.6) / e.transform.k; });
+  gDots.selectAll(".country-dot").attr("r", function() { return +this.dataset.baseR / e.transform.k; });
   gFlows.selectAll(".flow").attr("stroke-width", function() { return +this.dataset.baseW / e.transform.k; });
 });
 svg.call(zoom);
@@ -273,7 +273,7 @@ function drawInstitutionDots() {
       .attr("class", "inst-dot")
       .attr("cx", d => projection([d.lon, d.lat])[0])
       .attr("cy", d => projection([d.lon, d.lat])[1])
-      .attr("r", 2.2)
+      .attr("r", 2.6)
       .on("mouseenter", function(e, d) {
         const t = document.getElementById("tooltip");
         t.innerHTML = `<div class="name">${escapeHtml(d.name)}</div>` +
